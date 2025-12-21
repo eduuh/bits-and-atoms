@@ -1,0 +1,137 @@
+---
+title: Building a Modern Developer Blog
+published: false
+slug: building-a-modern-developer-blog
+publishedAt: '2023-12-06'
+updatedAt: '2025-11-26'
+summary: >-
+  Welcome to my new digital garden! In this inaugural post, I explore the tech
+  stack behind this blog, including Next.js App Router, MDX, Tailwind CSS, and
+  some interactive goodies like Sandpack. Join me as I break down the
+  architecture and design decisions.
+image: /images/home-hero.jpg
+tags:
+  - Engineering
+  - Lifestyle
+  - my-blog
+pinned: true
+series:
+  title: Building a Modern Blog
+  order: 1
+---
+
+Welcome to my new blog! I've finally gotten around to building a proper home for my thoughts, tutorials, and experiments on the web. This isn't just a static site; it's a playground where I can test new technologies and share what I learn along the way.
+
+## Why Another Blog?
+
+You might be wondering, "Why build a blog from scratch in 2024?" It's a fair question. There are plenty of platforms out there like Medium, Dev.to, or Hashnode that make publishing easy. But for me, owning the platform is part of the fun. It allows me to:
+
+1.  **Control the Design**: I can tweak every pixel, from the typography to the dark mode colors.
+2.  **Experiment with Tech**: This blog is built with the latest Next.js App Router, which was a great learning experience.
+3.  **Embed Interactive Components**: Standard CMS platforms rarely let you drop in a live React component or a custom interactive graph. Here, I can do whatever I want.
+
+I talk more about the tools I use in [My Coding Setup](/blog/coding-setup).
+
+<Callout type="info" title="Did you know?">
+  This blog supports **interactive components** directly inside Markdown! I can drop in alerts, counters, or even full mini-apps without leaving the MDX file.
+</Callout>
+
+## The Tech Stack
+
+I wanted a stack that was fast, type-safe, and flexible. Here is what I settled on:
+
+*   **Framework**: Next.js 14 (App Router)
+*   **Styling**: Tailwind CSS
+*   **Content**: MDX (Markdown + JSX)
+*   **Syntax Highlighting**: Shiki (server-side)
+*   **Interactivity**: Framer Motion & Sandpack
+
+Here is a high-level view of how the blog works:
+
+```d2
+direction: right
+User -> Next.js App: Request Page
+Next.js App -> File System: Read MDX
+File System -> Next.js App: Return Content
+Next.js App -> User: Render HTML
+```
+
+The combination of **MDX** and **Server Components** is particularly powerful. I can write my posts in Markdown, but import React components when I need them. The heavy lifting happens on the server, so the initial page load is blazing fast.
+
+## Code Snippets
+
+One of the most important features for a dev blog is code highlighting. I'm using **Shiki**, which highlights code at build time. This means no heavy JavaScript libraries are needed on the client just to colorize some text.
+
+Here is a static code snippet with syntax highlighting:
+
+```tsx
+// components/Greeting.tsx
+interface GreetingProps {
+  name: string;
+}
+
+const Greeting = ({ name }: GreetingProps) => {
+  return (
+    <div className="p-4 bg-blue-100 rounded-lg">
+      <h1 className="text-2xl font-bold text-blue-900">
+        Hello, {name}!
+      </h1>
+    </div>
+  );
+};
+
+export default Greeting;
+```
+
+## Live Code Playground
+
+Static snippets are great, but sometimes you want to let the user play with the code. That's where **Sandpack** comes in. It spins up a live coding environment right in the browser.
+
+Try editing the text in the preview below to see it update live!
+
+<SandpackDemo 
+  template="react"
+  files={{
+    "/App.js": `export default function App() {
+  return (
+    <div style={{ 
+      padding: 20, 
+      fontFamily: 'system-ui',
+      background: '#f0f9ff',
+      borderRadius: 8,
+      height: '100%'
+    }}>
+      <h1 style={{ color: '#0369a1' }}>Hello from Sandpack!</h1>
+      <p style={{ color: '#334155' }}>
+        This is a live React component running in your browser.
+        Try changing this text!
+      </p>
+      <button style={{
+        marginTop: 10,
+        padding: '8px 16px',
+        background: '#0284c7',
+        color: 'white',
+        border: 'none',
+        borderRadius: 4,
+        cursor: 'pointer'
+      }} onClick={() => alert('Clicked!')}>
+        Click Me
+      </button>
+    </div>
+  );
+}`
+  }}
+/>
+
+## What's Next?
+
+I have a lot of plans for this space. I want to write about:
+
+*   Advanced TypeScript patterns
+*   Animation techniques with Framer Motion
+*   Server Actions in Next.js
+*   Building accessible UI components
+
+Stay tuned for more!
+
+
