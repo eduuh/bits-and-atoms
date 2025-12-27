@@ -1,0 +1,37 @@
+---
+title: Designing for Keyboard Accessibility
+published: false
+publishedAt: '2024-04-15'
+summary: Why keyboard navigation matters and how to visualize shortcuts.
+tags:
+  - Engineering
+status: published
+image: /images/blog-hero.jpg
+series:
+  title: Developer Lifestyle
+  order: 2
+---
+
+Keyboard accessibility is crucial for power users and those with disabilities.
+
+## Common Shortcuts
+
+Here are some shortcuts you might use every day:
+
+- Copy: <Kbd>Cmd</Kbd> + <Kbd>C</Kbd>
+- Paste: <Kbd>Cmd</Kbd> + <Kbd>V</Kbd>
+- Open Command Palette: <Kbd>Cmd</Kbd> + <Kbd>Shift</Kbd> + <Kbd>P</Kbd>
+
+## The Kbd Component
+
+We created a custom `<Kbd>` component to visualize these keys. It adds a nice border and background to make them pop.
+
+```tsx
+<Kbd>Ctrl</Kbd>
+```
+
+This renders as: <Kbd>Ctrl</Kbd>
+
+## Why it matters
+
+Using visual cues for keyboard shortcuts helps users learn them faster. It also breaks up the text and makes documentation more engaging.
