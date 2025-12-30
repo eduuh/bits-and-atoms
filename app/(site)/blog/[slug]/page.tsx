@@ -4,7 +4,6 @@ import { ReadingMode } from '@/components/blog/ReadingMode';
 import { ReadingModeProvider } from '@/components/blog/ReadingModeContext';
 import { ReadingModeTrigger } from '@/components/blog/ReadingModeTrigger';
 import { ReadingProgressBar } from '@/components/blog/ReadingProgressBar';
-import { ViewInGraph } from '@/components/blog/ViewInGraph';
 import { Comments } from '@/components/blog/Comments';
 import { TableOfContents } from '@/components/mdx/TableOfContents';
 import { notFound } from 'next/navigation';
@@ -87,9 +86,7 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         
-        <PageContainer className="py-8">
-          {/* Hero Section */}
-          <div className="relative w-full h-[30vh] min-h-[250px] flex flex-col justify-end pb-6 mb-8 rounded-xl overflow-hidden">
+        <div className="relative w-full h-[35vh] min-h-[300px] flex flex-col justify-end pb-8 overflow-hidden">
             {/* Background Image */}
             <div className="absolute inset-0 z-0">
               <Image
@@ -104,7 +101,7 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
               <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
             </div>
 
-            <div className="relative z-10 px-6 w-full">
+            <div className="relative z-10 w-full max-w-5xl mx-auto px-6">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-0.5">
                   <Link href="/" className="hover:text-foreground transition-colors">
@@ -153,13 +150,13 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
                     ))}
                   </div>
                   <span>•</span>
-                  <ViewInGraph slug={post.slug} />
                   <ReadingModeTrigger />
                 </div>
               </div>
             </div>
           </div>
 
+        <PageContainer className="py-8">
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_200px] gap-8">
             <div className="prose prose-neutral dark:prose-invert max-w-none prose-headings:scroll-mt-20 prose-a:text-primary prose-a:underline hover:prose-a:text-muted-foreground transition-colors">

@@ -115,3 +115,19 @@ export const getPostsBySeries = (seriesTitle: string): Post[] => {
     });
 };
 
+export const getMostPopularTags = (limit: number = 10): string[] => {
+  const posts = getAllPosts();
+  const tagCounts: Record<string, number> = {};
+  
+  posts.forEach((post) => {
+    post.frontmatter.tags?.forEach((tag) => {
+      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+    });
+  });
+
+  return Object.entries(tagCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([tag]) => tag);
+};
+

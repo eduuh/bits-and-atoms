@@ -31,12 +31,10 @@ export const siteConfig = {
   },
   nav: [
     { title: 'Home', href: '/' },
-    { title: 'Blog', href: '/blog' },
+    { title: 'Now', href: '/now' },
     { title: 'Series', href: '/series' },
     { title: 'About', href: '/about' },
-    { title: 'Now', href: '/now' },
     { title: 'Topics', href: '/tags' },
-    { title: 'Graph', href: '/graph' },
     { title: 'RSS', href: '/rss' },
   ],
 };

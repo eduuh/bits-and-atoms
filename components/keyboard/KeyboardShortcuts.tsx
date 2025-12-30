@@ -11,7 +11,6 @@ export const defaultShortcuts: ShortcutConfig[] = [
   { id: 'close-modal', key: 'Escape', modifiers: [], description: 'Close modal / dialog', category: 'Navigation' },
   { id: 'go-home', key: 'g h', modifiers: [], description: 'Go to home', category: 'Navigation', sequence: true },
   { id: 'go-blog', key: 'g b', modifiers: [], description: 'Go to blog', category: 'Navigation', sequence: true },
-  { id: 'go-graph', key: 'g g', modifiers: [], description: 'Go to graph', category: 'Navigation', sequence: true },
   
   // Search modes
   { id: 'search-tags', key: '#', modifiers: [], description: 'Search by tags (in search)', category: 'Search' },

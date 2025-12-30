@@ -1,6 +1,7 @@
 import { siteConfig } from '@/config/site';
 import { Github, Linkedin, Mail, Terminal, Cpu, Globe, Code2, Server, Database } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export const metadata = {
   title: 'About Me',
@@ -11,46 +12,61 @@ export default function AboutPage() {
   return (
     <main className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative w-full py-24 px-6 bg-gradient-to-b from-primary/5 to-background border-b border-border">
-        <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-            Hi, I&apos;m <span className="text-primary">{siteConfig.name}</span>
-          </h1>
-          <p className="text-xl text-muted-foreground leading-relaxed mb-8">
-            {siteConfig.description}. I&apos;m passionate about building digital experiences that look great and perform even better.
-          </p>
-          
-          <div className="flex items-center justify-center gap-4">
-            <Link 
-              href={siteConfig.links.github}
-              target="_blank"
-              rel="noreferrer"
-              className="p-3 rounded-full bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
-            >
-              <Github className="w-6 h-6" />
-              <span className="sr-only">GitHub</span>
-            </Link>
-            <Link 
-              href={siteConfig.links.linkedin}
-              target="_blank"
-              rel="noreferrer"
-              className="p-3 rounded-full bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
-            >
-              <Linkedin className="w-6 h-6" />
-              <span className="sr-only">LinkedIn</span>
-            </Link>
-            <Link 
-              href="mailto:contact@example.com"
-              className="p-3 rounded-full bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
-            >
-              <Mail className="w-6 h-6" />
-              <span className="sr-only">Email</span>
-            </Link>
+      <div className="max-w-5xl mx-auto px-6 py-24">
+        <div className="flex flex-col md:flex-row items-center gap-12">
+          {/* Content Side (Left) */}
+          <div className="flex-1 text-center md:text-left">
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
+              Hi, I&apos;m <span className="text-primary">{siteConfig.name}</span>
+            </h1>
+            <p className="text-xl text-muted-foreground leading-relaxed mb-8">
+              {siteConfig.description}. I&apos;m passionate about building digital experiences that look great and perform even better.
+            </p>
+            
+            <div className="flex items-center justify-center md:justify-start gap-4">
+              <Link 
+                href={siteConfig.links.github}
+                target="_blank"
+                rel="noreferrer"
+                className="p-3 rounded-full bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                <Github className="w-6 h-6" />
+                <span className="sr-only">GitHub</span>
+              </Link>
+              <Link 
+                href={siteConfig.links.linkedin}
+                target="_blank"
+                rel="noreferrer"
+                className="p-3 rounded-full bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                <Linkedin className="w-6 h-6" />
+                <span className="sr-only">LinkedIn</span>
+              </Link>
+              <Link 
+                href="mailto:contact@example.com"
+                className="p-3 rounded-full bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                <Mail className="w-6 h-6" />
+                <span className="sr-only">Email</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Image Side (Right) */}
+          <div className="relative w-64 h-64 md:w-80 md:h-80 shrink-0">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-primary to-secondary opacity-20 blur-2xl" />
+            <Image
+              src="/images/home-hero.jpg"
+              alt={siteConfig.name}
+              fill
+              className="rounded-2xl object-cover border-2 border-border shadow-2xl"
+              priority
+            />
           </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-16 space-y-16">
+      <div className="max-w-5xl mx-auto px-6 py-16 space-y-16">
         {/* Bio Section */}
         <section className="prose dark:prose-invert max-w-none">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">

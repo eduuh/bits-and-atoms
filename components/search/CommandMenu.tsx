@@ -319,7 +319,6 @@ export function CommandMenu({ posts }: CommandMenuProps) {
     { name: 'About', href: '/about', icon: User },
     { name: 'Now', href: '/now', icon: Clock },
     { name: 'Topics', href: '/tags', icon: Tags },
-    { name: 'Graph', href: '/graph', icon: Network },
     { name: 'RSS', href: '/rss', icon: Rss },
   ];
 
@@ -487,18 +486,6 @@ export function CommandMenu({ posts }: CommandMenuProps) {
                               >
                                 <ListPlus className="h-4 w-4" aria-hidden="true" />
                               </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpen(false);
-                                  router.push(`/graph?focus=${post.slug}`);
-                                }}
-                                className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-primary transition-all"
-                                title="View in Graph"
-                                aria-label="View in Graph"
-                              >
-                                <Network className="h-4 w-4" aria-hidden="true" />
-                              </button>
                             </div>
                           </Command.Item>
                         );
@@ -524,18 +511,6 @@ export function CommandMenu({ posts }: CommandMenuProps) {
                               <span className="truncate text-sm font-medium group-aria-selected:text-primary transition-colors">{post.title}</span>
                               <span className="truncate text-xs text-muted-foreground">{post.summary}</span>
                             </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpen(false);
-                                router.push(`/graph?focus=${post.slug}`);
-                              }}
-                              className="shrink-0 p-1.5 rounded-md opacity-0 group-hover:opacity-100 group-aria-selected:opacity-100 hover:bg-accent text-muted-foreground hover:text-primary transition-all"
-                              title="View in Graph"
-                              aria-label="View in Graph"
-                            >
-                              <Network className="h-4 w-4" aria-hidden="true" />
-                            </button>
                           </Command.Item>
                         );
                       })}
@@ -574,18 +549,6 @@ export function CommandMenu({ posts }: CommandMenuProps) {
                                   </div>
                                 )}
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpen(false);
-                                  router.push(`/graph?focus=${post.slug}`);
-                                }}
-                                className="shrink-0 p-1.5 rounded-md opacity-0 group-hover:opacity-100 group-aria-selected:opacity-100 hover:bg-accent text-muted-foreground hover:text-primary transition-all"
-                                title="View in Graph"
-                                aria-label="View in Graph"
-                              >
-                                <Network className="h-4 w-4" aria-hidden="true" />
-                              </button>
                             </Command.Item>
                           );
                         })}

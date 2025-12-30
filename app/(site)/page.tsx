@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { getAllPosts, getAllTags } from '@/lib/mdx/source';
+import { getAllPosts, getMostPopularTags } from '@/lib/mdx/source';
 import { FeatureFlag } from '@/components/providers/FeatureFlag';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { siteConfig } from '@/config/site';
@@ -8,7 +8,7 @@ import { PageContainer } from '@/components/layout/PageContainer';
 
 export default function Home() {
   const posts = getAllPosts();
-  const tags = getAllTags();
+  const tags = getMostPopularTags(10);
   
   // Limit posts on home page
   const MAX_DISPLAY_POSTS = 5;
@@ -99,6 +99,12 @@ export default function Home() {
                   {tag}
                 </Link>
               ))}
+              <Link 
+                href="/tags"
+                className="px-2.5 py-1 border border-border text-muted-foreground rounded-md text-xs font-medium hover:bg-secondary hover:text-foreground transition-colors"
+              >
+                View all
+              </Link>
             </div>
           </section>
 

@@ -1,0 +1,32 @@
+---
+title: Opnsense - Firewall
+slug: opnsense-firewall
+publishedAt: '2026-03-04'
+summary: 'Deep dive into firewall rules, aliases, and security policies in OPNsense.'
+tags:
+  - Infrastructure
+published: false
+series:
+  title: Home Lab
+  order: 4
+---
+
+Routing is about moving packets; the firewall is about deciding *which* packets are allowed to move.
+
+## The Default Deny Policy
+
+Security starts with a "Default Deny" policy. Nothing gets in or out unless explicitly allowed.
+
+## Aliases are Your Friend
+
+Instead of typing IP addresses into rules, I use Aliases.
+- `IoT_Devices`: A list of all smart plugs and cameras.
+- `Trusted_PCs`: My main workstations.
+- `Blocked_Countries`: GeoIP lists to block traffic from specific regions.
+
+## VLAN Isolation Rules
+
+The most important rules in my setup prevent IoT devices from talking to my main network.
+- **Allow:** IoT -> Internet (for updates/cloud control).
+- **Block:** IoT -> LAN (prevent hacking lateral movement).
+- **Allow:** LAN -> IoT (so I can control them).

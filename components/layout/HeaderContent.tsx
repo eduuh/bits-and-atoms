@@ -47,13 +47,13 @@ export function HeaderContent({ posts }: HeaderContentProps) {
           {/* Primary Nav Links */}
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
             <Link 
-              href="/blog" 
+              href="/now" 
               className={cn(
                 "hover:text-foreground transition-colors",
-                pathname?.startsWith('/blog') && "text-foreground font-semibold"
+                pathname === '/now' && "text-foreground font-semibold"
               )}
             >
-              Blog
+              Now
             </Link>
             <Link 
               href="/series" 

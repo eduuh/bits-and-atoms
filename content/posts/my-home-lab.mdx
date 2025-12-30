@@ -1,0 +1,31 @@
+---
+title: My Home Lab
+slug: my-home-lab
+publishedAt: '2026-03-02'
+summary: An overview of the servers and services running in my closet.
+tags:
+  - Infrastructure
+published: true
+pinned: true
+series:
+  title: Home Lab
+  order: 2
+---
+
+A Home Lab is a playground for learning, testing, and hosting your own services. Here is a tour of my setup.
+
+## The Hardware
+
+- **Compute:** A cluster of Lenovo Tiny PCs (Project TinyMiniMicro). They are power-efficient, quiet, and powerful enough for most tasks.
+- **Storage:** A custom-built NAS running TrueNAS Scale for reliable ZFS storage.
+- **Networking:** Managed PoE switches to power cameras and access points.
+
+## The Software Stack
+
+I run Proxmox VE as my hypervisor. It allows me to spin up VMs and LXC containers easily.
+
+## What I Host
+
+- **Media:** Plex/Jellyfin, the *arr stack.
+- **Productivity:** Nextcloud, Paperless-ngx.
+- **Development:** Gitea, Jenkins, and this blog's staging environment.
