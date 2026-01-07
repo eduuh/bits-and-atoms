@@ -1,0 +1,120 @@
+---
+title: Automating Cloudflare Pages with the API
+published: true
+slug: automating-cloudflare-pages-with-api
+publishedAt: '2026-01-11'
+summary: >-
+  The Cloudflare Pages dashboard is fine but I'd rather just curl things.
+  Here's how I set up staging and production branches pointing to different
+  domains without touching the UI.
+image: /images/home-hero.jpg
+tags:
+  - Cloudflare
+  - my-blog
+series:
+  title: Cloudflare
+  order: 1
+---
+
+I needed to set up staging and production domains for my blog on Cloudflare Pages. You can do this through the dashboard but I don't know, I just didn't feel like clicking around. The API is right there.
+
+## What I Wanted
+
+Pretty straightforward:
+- **`eduuh.com`** → `blog-2026` main branch
+- **`staging.eduuh.com`** → `blog-2026` staging branch
+
+## Getting API Access
+
+Grabbed an API token from [the Cloudflare dashboard](https://dash.cloudflare.com/profile/api-tokens). You need:
+
+- **Account > Cloudflare Pages > Edit**
+- **Account > Account Settings > Read**
+- **Zone > DNS > Edit** (if you want to mess with DNS too)
+
+<Callout type="warning" title="Don't be that guy">
+  Keep the token out of git. I stuck mine in `.env` and added it to `.gitignore`.
+</Callout>
+
+## Adding the Domains
+
+Attaching custom domains to a Pages project:
+
+```bash
+# Root domain
+curl -X POST \
+  "https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects/blog-2026/domains" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  --data '{"name":"eduuh.com"}'
+
+# Staging subdomain
+curl -X POST \
+  "https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects/blog-2026/domains" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  --data '{"name":"staging.eduuh.com"}'
+```
+
+## Making Staging Actually Point to Staging
+
+Here's the part that tripped me up. Both domains were now attached, but they both pointed to the `main` branch. Not super useful for a staging environment.
+
+You have to explicitly tell Cloudflare which branch a domain should serve:
+
+```bash
+curl -X PATCH \
+  "https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects/blog-2026/domains/staging.eduuh.com" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  --data '{"branch":"staging"}'
+```
+
+This was the key bit I couldn't figure out from the dashboard. The API made it obvious.
+
+## DNS While I'm At It
+
+My domain's already on Cloudflare, so I figured I'd set up the DNS records via API too:
+
+```bash
+# Root domain
+curl -X POST \
+  "https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  --data '{
+    "type": "CNAME",
+    "name": "@",
+    "content": "blog-2026-290.pages.dev",
+    "proxied": true
+  }'
+
+# Staging
+curl -X POST \
+  "https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  --data '{
+    "type": "CNAME",
+    "name": "staging",
+    "content": "blog-2026-290.pages.dev",
+    "proxied": true
+  }'
+```
+
+Both point to the same `pages.dev` subdomain - Cloudflare routes to the right branch based on the domain config we set earlier.
+
+## That's It
+
+| Domain | Branch |
+|--------|--------|
+| `eduuh.com` | main |
+| `staging.eduuh.com` | staging |
+
+Push to `main`, production updates. Push to `staging`, staging updates.
+
+The `PATCH` to map a specific branch to a domain was the thing I couldn't figure out how to do in the dashboard. Might be possible, I didn't look that hard. But the API made it obvious.
+
+---
+
+*Claude figured out the APIs for me - saved me from digging through docs and clicking around the dashboard.*
