@@ -1,0 +1,238 @@
+---
+title: My Home Lab
+slug: my-home-lab
+publishedAt: '2026-01-13'
+summary: A deep dive into my Kubernetes-based homelab running on Talos Linux with GitOps, self-hosted services, and full observability.
+tags:
+  - Kubernetes
+  - Self-Hosted
+published: true
+pinned: true
+series:
+  title: Home Lab
+  order: 2
+---
+
+A homelab is more than just servers in a closet - it's a playground for learning, a production environment for self-hosted services, and a way to take control of your own data. Here's a comprehensive tour of my setup.
+
+For details on the physical machines, check out [Homelab Hardware](/blog/homelab-hardware).
+
+## The Hardware
+
+My cluster runs on compact, power-efficient mini PCs:
+
+| Node | Role | CPU | RAM | Purpose |
+|------|------|-----|-----|---------|
+| intel-c-firewall | Control Plane | 4 cores | 8 GB | Kubernetes API, etcd (no workloads) |
+| amd-w-minipc | Worker | 16 cores | 13 GB | Primary workloads |
+| intel-w-acemagic | Worker | 4 cores | 16 GB | Storage-heavy workloads |
+
+The `intel-c-firewall` node runs as a VM on Proxmox, hosted on a Glovary mini PC that also runs an OPNsense VM (firewall) and Pi-hole DNS. The other two nodes (`amd-w-minipc` and `intel-w-acemagic`) are bare metal mini PCs.
+
+**Total Resources:** 24 CPU cores, ~35 GB RAM, ~2.1 TB storage
+
+All nodes are connected via an unmanaged switch - no VLANs or fancy network segmentation, just simple flat networking that gets the job done.
+
+The beauty of mini PCs is their power efficiency - the entire cluster runs on about 50W idle, making it practical to run 24/7 without destroying the electricity bill.
+
+## The Operating System: Talos Linux
+
+Instead of traditional Linux distributions, I run [Talos Linux](https://www.talos.dev/) - an immutable, API-managed operating system designed specifically for Kubernetes.
+
+Why Talos?
+
+- **Immutable:** No SSH, no shell. The entire OS is read-only and managed via API
+- **Secure:** Minimal attack surface with only essential components
+- **Declarative:** Configuration is defined in YAML and applied via `talosctl`
+- **Automatic updates:** Rolling upgrades without downtime
+
+Current versions:
+- Talos: v1.11.5
+- Kubernetes: v1.34.1
+- containerd: v2.1.5
+
+## GitOps with Flux
+
+Everything in my cluster is managed through Git. I use [Flux v2](https://fluxcd.io/) for GitOps, which means:
+
+1. All manifests live in a Git repository
+2. Flux watches the repo and automatically applies changes
+3. Secrets are encrypted with [SOPS](https://github.com/getsops/sops) + [age](https://github.com/FiloSottile/age), with some stored in [1Password](https://1password.com/)
+
+<GitHubRepo repo="eduuh/kube-homelab" description="GitOps repository for my Kubernetes homelab - Talos Linux, Flux, and all the YAML" />
+
+```
+cluster/
+├── apps/           # Application deployments
+├── networking/     # Ingress, DNS, load balancing
+├── storage/        # Longhorn configuration
+├── cert-manager/   # TLS certificates
+├── monitoring/     # Prometheus stack
+└── flux-system/    # Flux controllers
+```
+
+When I want to deploy something new, I commit YAML to the repo and push. Flux handles the rest.
+
+## Networking Stack
+
+### Load Balancing: MetalLB
+
+Since this is bare metal (no cloud load balancers), I use [MetalLB](https://metallb.universe.tf/) in Layer 2 mode to assign external IPs to services:
+
+- IP Pool: `10.0.0.53-10.0.0.60`
+- Ingress Controller: `10.0.0.54`
+- Pi-hole DNS: `10.0.0.55`
+
+### Ingress: nginx
+
+All HTTP traffic flows through [ingress-nginx](https://kubernetes.github.io/ingress-nginx/) running as a DaemonSet. Every service gets:
+
+- HTTPS with auto-provisioned Let's Encrypt certificates
+- A subdomain under `*.eduuh.com`
+- Proper headers and timeouts for large file uploads
+
+### DNS: Pi-hole + CoreDNS
+
+I run a split DNS setup:
+
+```
+Client → Pi-hole (10.0.0.55) → CoreDNS (10.0.0.53) for *.eduuh.com
+                             → Cloudflare (1.1.1.1) for public domains
+```
+
+Pi-hole blocks ads and tracking at the DNS level, while CoreDNS resolves internal services.
+
+## Storage: Longhorn
+
+My homelab philosophy prioritizes **data-recovery over reliability** - services can go down, but data must be recoverable. [Longhorn](https://longhorn.io/) fits this perfectly, providing distributed block storage across the cluster:
+
+- **Replication:** 2-3 copies of each volume spread across nodes
+- **Snapshots:** Automated backups
+- **Access modes:** Both ReadWriteOnce and ReadWriteMany supported
+
+This gives me resilience - if a node dies, the data is still available on other nodes. I still need to spend time learning Longhorn's periodic backup features for off-cluster disaster recovery.
+
+## What I Self-Host
+
+### Media Stack
+
+The crown jewel of any homelab - a complete media management system:
+
+- **[Jellyfin](https://jellyfin.org/):** Media streaming server (the open-source Plex alternative)
+- **[qBittorrent](https://www.qbittorrent.org/):** Torrent client with web UI
+- **[Sonarr](https://sonarr.tv/):** TV show automation
+- **[Radarr](https://radarr.video/):** Movie automation
+- **[Prowlarr](https://prowlarr.com/):** Indexer management
+
+All services share a 200GB volume with organized directories:
+
+```
+/media/
+├── downloads/
+├── tv/
+└── movies/
+```
+
+This enables hardlinks - when Sonarr moves a completed download, it's instant with no extra disk space used.
+
+### Productivity
+
+- **[Immich](https://immich.app/):** Self-hosted Google Photos replacement (100GB library)
+- **[Nextcloud](https://nextcloud.com/):** File sync and collaboration
+- **[Vaultwarden](https://github.com/dani-garcia/vaultwarden):** Bitwarden-compatible password manager
+- **[n8n](https://n8n.io/):** Workflow automation platform
+- **[Memos](https://usememos.com/):** Lightweight note-taking
+
+### Utilities
+
+- **[Glance](https://github.com/glanceapp/glance):** Dashboard with service monitoring
+- **[IT-Tools](https://github.com/CorentinTh/it-tools):** Developer utilities collection
+- **[Uptime Kuma](https://github.com/louislam/uptime-kuma):** Status monitoring
+
+### The Dashboard
+
+Glance ties everything together with a clean overview of all services:
+
+![Glance dashboard showing all homelab services](/images/Screenshot%202026-01-14%20at%2019.18.11.png)
+
+The dashboard displays service health, response times, and organizes everything into logical categories - Applications, Media, Monitoring, and Infrastructure. It's the first thing I check when troubleshooting.
+
+## Observability
+
+You can't manage what you can't measure. My monitoring stack includes:
+
+### Prometheus + Grafana
+
+The [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) provides:
+
+- Prometheus for metrics collection (30-day retention)
+- Grafana for visualization
+- AlertManager for notifications
+- Pre-configured dashboards for Kubernetes metrics
+
+### Custom Exporters
+
+- **OPNsense Exporter:** Pulls metrics from my firewall (CPU, memory, interface traffic, WAN latency)
+- **Speedtest Tracker:** Hourly internet speed tests with historical data
+
+I have custom Grafana dashboards showing:
+- Internet bandwidth usage
+- Download/upload speeds over time
+- Per-interface traffic on the firewall
+
+## The Service Map
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Jellyfin | jellyfin.eduuh.com | Media streaming |
+| qBittorrent | qbittorrent.eduuh.com | Downloads |
+| Sonarr | sonarr.eduuh.com | TV automation |
+| Radarr | radarr.eduuh.com | Movie automation |
+| Prowlarr | prowlarr.eduuh.com | Indexers |
+| Immich | images.eduuh.com | Photos |
+| Nextcloud | nextcloud.eduuh.com | Files |
+| Vaultwarden | bitwarden.eduuh.com | Passwords |
+| n8n | n8n.eduuh.com | Automation |
+| Memos | memos.eduuh.com | Notes |
+| Glance | glance.eduuh.com | Dashboard |
+| Grafana | grafana.eduuh.com | Metrics |
+| Pi-hole | pihole.eduuh.com | DNS admin |
+| Longhorn | longhorn.eduuh.com | Storage UI |
+
+## Lessons Learned
+
+**Start simple, iterate.** My first attempt was over-engineered with Ansible, Terraform, and multiple VMs. The current setup with Talos + Flux is far simpler and more reliable.
+
+**GitOps is worth it.** Having everything in Git means I can rebuild the entire cluster from scratch. When things break, `git log` shows exactly what changed.
+
+**Shared storage matters.** The media stack only works smoothly because all services see the same filesystem. Planning storage architecture upfront saves pain later.
+
+**Monitoring from day one.** Adding observability after the fact is painful. Bake it in from the start.
+
+**Data-recovery over reliability.** It's just me and my wife using these services - if something goes down, it's not the end of the world. What matters is that data can be recovered. This mindset simplifies infrastructure decisions significantly.
+
+## Hardware Roadmap
+
+The current storage setup works, but there's room to grow:
+
+- **NAS:** A dedicated NAS for large-scale storage and off-cluster backups
+- **SSD upgrades:** 2x 4TB 2.5" SSDs available for expanding cluster storage
+- **OS storage:** 1TB dedicated for OS-level operations
+- **Jellyfin node:** An old Dell laptop with Intel Core i7 (8th gen) would be ideal for Jellyfin - plenty of compute for hardware transcoding
+- **Repurpose intel-w-acemagic:** This node has low compute power, so I'm planning to replace it with the laptop and find a new role for it
+
+![Dell laptop internals showing the motherboard, 42Wh battery, and upgrade potential](/images/20260114_192856.jpg)
+
+This would separate bulk media storage from application data, improving both performance and backup strategies. With more storage capacity, I could also explore self-hosting smart home camera feeds.
+
+## What's Next
+
+- Learning more about homelabbing and infrastructure patterns
+- Hardware transcoding for Jellyfin (Intel QuickSync)
+- Automated backups to off-site storage
+- Home Assistant for smart home integration
+- More automation with n8n workflows
+
+The homelab is never "done" - and that's the fun of it.
+
+📝 I'll be writing more in-depth posts about each service as I learn and refine my setup.
