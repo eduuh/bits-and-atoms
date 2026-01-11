@@ -2,6 +2,7 @@ import { siteConfig } from '@/config/site';
 import { Github, Linkedin, Mail, Terminal, Cpu, Globe, Code2, Server, Database } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { generatePersonSchema, generateBreadcrumbSchema, combineSchemas } from '@/lib/seo/schema';
 
 export const metadata = {
   title: 'About Me',
@@ -9,8 +10,33 @@ export const metadata = {
 };
 
 export default function AboutPage() {
+  // Auto-generate structured data schemas
+  const personSchema = generatePersonSchema({
+    name: siteConfig.name,
+    url: siteConfig.url,
+    description: siteConfig.about.description,
+    image: `${siteConfig.url}/images/home-hero.jpg`,
+    jobTitle: 'Software Engineer',
+    location: siteConfig.about.location,
+    sameAs: [
+      siteConfig.links.github,
+      siteConfig.links.linkedin,
+    ],
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', url: siteConfig.url },
+    { name: 'About', url: `${siteConfig.url}/about` },
+  ]);
+
+  const combinedSchema = combineSchemas(personSchema, breadcrumbSchema);
+
   return (
     <main className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(combinedSchema) }}
+      />
       {/* Hero Section */}
       <div className="max-w-5xl mx-auto px-6 py-24">
         <div className="flex flex-col md:flex-row items-center gap-12">

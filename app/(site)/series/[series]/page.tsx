@@ -1,4 +1,4 @@
-import { getPostsBySeries } from '@/lib/mdx/source';
+import { getPostsBySeries, getAllSeries } from '@/lib/mdx/source';
 import { MDXContent } from '@/components/mdx/MDXContent';
 import { formatDate } from '@/lib/utils';
 import { notFound } from 'next/navigation';
@@ -13,15 +13,23 @@ import { siteConfig } from '@/config/site';
 import { PageContainer } from '@/components/layout/PageContainer';
 
 interface Props {
-  params: {
+  params: Promise<{
     series: string;
-  };
+  }>;
+}
+
+export async function generateStaticParams() {
+  const series = getAllSeries();
+  return series.map((s) => ({
+    series: encodeURIComponent(s),
+  }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const seriesTitle = decodeURIComponent(params.series);
+  const { series } = await params;
+  const seriesTitle = decodeURIComponent(series);
   const posts = getPostsBySeries(seriesTitle);
-  
+
   if (posts.length === 0) {
     return {};
   }
@@ -32,8 +40,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default function SeriesWorkshopPage({ params }: Props) {
-  const seriesTitle = decodeURIComponent(params.series);
+export default async function SeriesWorkshopPage({ params }: Props) {
+  const { series } = await params;
+  const seriesTitle = decodeURIComponent(series);
   const posts = getPostsBySeries(seriesTitle);
 
   if (posts.length === 0) {

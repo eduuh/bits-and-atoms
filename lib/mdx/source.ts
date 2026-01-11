@@ -48,7 +48,8 @@ export const getPostBySlug = cache((slug: string): Post | null => {
   const { data, content } = matter(fileContent);
   const frontmatter = data as PostFrontmatter;
 
-  if (frontmatter.published === false && process.env.NODE_ENV === 'production') {
+  // Filter out unpublished posts in all environments
+  if (frontmatter.published === false) {
     return null;
   }
 
@@ -69,13 +70,8 @@ export const getAllPosts = cache((): Post[] => {
   const posts = slugs
     .map((slug) => getPostBySlug(slug))
     .filter((post): post is Post => post !== null)
-    // Filter out drafts in production
-    .filter((post) => {
-      if (process.env.NODE_ENV === 'production') {
-        return post.frontmatter.status !== 'draft';
-      }
-      return true;
-    })
+    // Filter out drafts in all environments
+    .filter((post) => post.frontmatter.status !== 'draft')
     .sort((post1, post2) =>
       post1.frontmatter.publishedAt > post2.frontmatter.publishedAt ? -1 : 1
     );
