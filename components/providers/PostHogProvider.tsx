@@ -5,12 +5,20 @@ import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, Suspense } from "react";
 
+const environment = process.env.NEXT_PUBLIC_ENVIRONMENT || "development";
+
 if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
     person_profiles: "identified_only",
     capture_pageview: false, // We capture manually for Next.js route changes
     capture_pageleave: true,
+  });
+
+  // Register environment as a super property (attached to all events)
+  posthog.register({
+    environment: environment,
+    app_version: process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0",
   });
 }
 

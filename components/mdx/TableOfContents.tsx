@@ -1,6 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 interface TableOfContentsProps {
   source: string;
@@ -14,7 +16,9 @@ interface Heading {
 
 export function TableOfContents({ source }: TableOfContentsProps) {
   const [headings, setHeadings] = useState<Heading[]>([]);
-  const [activeId, setActiveId] = useState<string>("");
+  const [activeId, setActiveId] = useState<string>('');
+  const [indicatorStyle, setIndicatorStyle] = useState({ top: 0, height: 0 });
+  const navRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     // Simple regex to extract headings from raw markdown
@@ -29,8 +33,8 @@ export function TableOfContents({ source }: TableOfContentsProps) {
       // Create a simple slug from text
       const id = text
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
 
       foundHeadings.push({ id, text, level });
     }
@@ -47,7 +51,7 @@ export function TableOfContents({ source }: TableOfContentsProps) {
           }
         });
       },
-      { rootMargin: "0% 0% -80% 0%" }
+      { rootMargin: '0% 0% -80% 0%' }
     );
 
     headings.forEach((heading) => {
@@ -58,14 +62,47 @@ export function TableOfContents({ source }: TableOfContentsProps) {
     return () => observer.disconnect();
   }, [headings]);
 
+  // Update indicator position when active changes
+  useEffect(() => {
+    if (!activeId || !navRef.current) return;
+
+    const activeLink = navRef.current.querySelector(`[data-heading-id="${activeId}"]`);
+    if (activeLink) {
+      const navRect = navRef.current.getBoundingClientRect();
+      const linkRect = activeLink.getBoundingClientRect();
+      setIndicatorStyle({
+        top: linkRect.top - navRect.top,
+        height: linkRect.height,
+      });
+    }
+  }, [activeId]);
+
   if (headings.length === 0) return null;
 
   return (
-    <nav className="sticky top-24 self-start hidden lg:block">
+    <nav ref={navRef} className="sticky top-24 self-start hidden lg:block relative">
       <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">
         Table of Contents
       </h4>
-      <ul className="space-y-2 text-sm">
+
+      {/* Animated indicator */}
+      {activeId && (
+        <motion.div
+          className="absolute left-0 w-0.5 bg-primary rounded-full"
+          initial={false}
+          animate={{
+            top: indicatorStyle.top,
+            height: indicatorStyle.height,
+          }}
+          transition={{
+            type: 'spring',
+            stiffness: 500,
+            damping: 30,
+          }}
+        />
+      )}
+
+      <ul className="space-y-2 text-sm pl-3 border-l border-border">
         {headings.map((heading) => (
           <li
             key={heading.id}
@@ -73,15 +110,17 @@ export function TableOfContents({ source }: TableOfContentsProps) {
           >
             <a
               href={`#${heading.id}`}
-              className={`block transition-colors duration-200 ${
+              data-heading-id={heading.id}
+              className={cn(
+                'block py-1 transition-all duration-200',
                 activeId === heading.id
-                  ? "text-primary font-medium"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+                  ? 'text-primary font-medium translate-x-1'
+                  : 'text-muted-foreground hover:text-foreground hover:translate-x-0.5'
+              )}
               onClick={(e) => {
                 e.preventDefault();
                 document.getElementById(heading.id)?.scrollIntoView({
-                  behavior: "smooth",
+                  behavior: 'smooth',
                 });
               }}
             >

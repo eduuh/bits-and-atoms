@@ -1,8 +1,9 @@
 import { ImageResponse } from 'next/og';
-import { getPostBySlug } from '@/lib/mdx/source';
+import { getPostBySlug, getAllPosts } from '@/lib/mdx/source';
 import { siteConfig } from '@/config/site';
 import { formatDate } from '@/lib/utils';
 
+export const dynamic = 'force-static';
 export const alt = 'Blog Post Cover';
 export const size = {
   width: 1200,
@@ -11,8 +12,16 @@ export const size = {
 
 export const contentType = 'image/png';
 
-export default async function Image({ params }: { params: { slug: string } }) {
-  const post = getPostBySlug(params.slug);
+export async function generateStaticParams() {
+  const posts = getAllPosts();
+  return posts.map((post) => ({
+    slug: post.slug,
+  }));
+}
+
+export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const post = getPostBySlug(slug);
 
   if (!post) {
     return new ImageResponse(

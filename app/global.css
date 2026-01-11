@@ -37,28 +37,50 @@ html, body {
   --input: 240 5.9% 90%;
   --ring: 141 65% 51%;
   --radius: 0.5rem;
+
+  /* Bold & Expressive: Secondary accent colors */
+  --accent-blue: 217 91% 60%;    /* #3B82F6 */
+  --accent-purple: 271 81% 56%;  /* #A855F7 */
+  --accent-orange: 25 95% 53%;   /* #F97316 */
+
+  /* Glow effect tokens */
+  --glow-color: var(--primary);
+  --glow-opacity: 0.4;
+  --glow-sm: 0 0 20px -5px hsl(var(--glow-color) / var(--glow-opacity));
+  --glow-md: 0 0 30px -5px hsl(var(--glow-color) / 0.25);
+  --glow-lg: 0 0 40px -10px hsl(var(--glow-color) / 0.3);
 }
 
 .dark {
-  --background: 0 11% 8%; /* #191414 */
+  --background: 150 10% 7%; /* Richer dark with subtle green tint */
   --foreground: 0 0% 100%; /* #FFFFFF */
-  --card: 0 11% 8%;
+  --card: 150 8% 10%;
   --card-foreground: 0 0% 100%;
-  --popover: 0 11% 8%;
+  --popover: 150 8% 10%;
   --popover-foreground: 0 0% 100%;
-  --primary: 141 65% 51%; /* #1DB954 */
+  --primary: 141 70% 55%; /* Slightly more vibrant in dark mode */
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 20%; /* Darker gray for dark mode */
+  --secondary: 150 5% 18%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 0 0% 33%; /* #535353 */
-  --muted-foreground: 0 0% 80%;
-  --accent: 141 65% 51%;
+  --muted: 150 5% 25%;
+  --muted-foreground: 0 0% 75%;
+  --accent: 141 70% 55%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 16%; /* #282828 */
-  --input: 0 0% 16%;
-  --ring: 141 65% 51%;
+  --border: 150 5% 18%;
+  --input: 150 5% 18%;
+  --ring: 141 70% 55%;
+
+  /* Bold & Expressive: More vibrant accents in dark mode */
+  --accent-blue: 217 91% 65%;
+  --accent-purple: 271 81% 65%;
+  --accent-orange: 25 95% 60%;
+
+  /* Enhanced glow in dark mode */
+  --glow-opacity: 0.5;
+  --glow-md: 0 0 30px -5px hsl(var(--glow-color) / 0.35);
+  --glow-lg: 0 0 40px -10px hsl(var(--glow-color) / 0.4);
 }
 
 body {
@@ -94,26 +116,13 @@ body {
   outline-offset: 2px;
 }
 
-/* Accessibility: Focus styles - using !important to ensure they apply */
+/* Accessibility: Focus styles - consolidated */
 *:focus {
   outline: none;
 }
 
-*:focus-visible {
-  outline: 2px solid hsl(var(--primary)) !important;
-  outline-offset: 2px !important;
-  border-radius: 4px;
-}
-
-/* Ensure links show focus clearly */
-a:focus-visible {
-  outline: 2px solid hsl(var(--primary)) !important;
-  outline-offset: 2px !important;
-  border-radius: 4px;
-  text-decoration: underline;
-}
-
-/* Button focus styles */
+*:focus-visible,
+a:focus-visible,
 button:focus-visible,
 [role="button"]:focus-visible {
   outline: 2px solid hsl(var(--primary)) !important;
@@ -121,11 +130,13 @@ button:focus-visible,
   border-radius: 4px;
 }
 
-/* Input focus styles */
+a:focus-visible {
+  text-decoration: underline;
+}
+
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid hsl(var(--primary)) !important;
   outline-offset: 0 !important;
   border-color: hsl(var(--primary)) !important;
 }
@@ -136,5 +147,80 @@ select:focus-visible {
     min-height: 44px;
     min-width: 44px;
   }
+}
+
+/* ================================
+   Bold & Expressive Theme Styles
+   ================================ */
+
+/* Bold typography for headings */
+h1, h2, h3 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Animated gradient for header accent */
+.header-gradient {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary)) 0%,
+    hsl(var(--accent-purple)) 50%,
+    hsl(var(--primary)) 100%
+  );
+  background-size: 200% 100%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Glow effect utilities - using CSS variables */
+.glow-primary {
+  box-shadow: var(--glow-sm);
+}
+
+.glow-primary-lg {
+  box-shadow: var(--glow-lg);
+}
+
+/* Gradient button style */
+.btn-gradient {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent-purple)) 100%);
+  color: white;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-gradient:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -5px hsl(var(--primary) / 0.4);
+}
+
+.btn-gradient:active {
+  transform: translateY(0);
+}
+
+/* Gradient text utility */
+.text-gradient {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent-purple)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card glow on hover - uses glow tokens, dark mode handled via CSS variables */
+.card-glow {
+  transition: box-shadow 0.3s ease;
+}
+
+.card-glow:hover {
+  box-shadow: var(--glow-md);
+}
+
+/* Code block glow */
+pre[data-theme] {
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 0 30px -15px hsl(var(--primary) / 0.15);
 }
 

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { X, Keyboard } from 'lucide-react';
+import { usePortal } from '@/hooks/usePortal';
 
 // Default keyboard shortcuts configuration
 export const defaultShortcuts: ShortcutConfig[] = [
@@ -143,11 +144,7 @@ export function KeyboardShortcutsProvider({ children }: { children: React.ReactN
 
 export function KeyboardShortcutsHelp() {
   const { shortcuts, isHelpOpen, setIsHelpOpen, formatShortcut } = useKeyboardShortcuts();
-  const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
-
-  React.useEffect(() => {
-    setPortalContainer(document.body);
-  }, []);
+  const portalContainer = usePortal();
 
   // Group shortcuts by category
   const groupedShortcuts = React.useMemo(() => {

@@ -2,8 +2,9 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { X, ChevronUp, ChevronDown, FileSearch, ExternalLink, Trash2, List } from 'lucide-react';
+import { X, ChevronUp, ChevronDown, FileSearch, Trash2, List } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { usePortal } from '@/hooks/usePortal';
 
 export interface QuickReadItem {
   id: string;
@@ -142,11 +143,7 @@ export function QuickReadListPanel() {
     navigatePrev,
   } = useQuickReadList();
   const router = useRouter();
-  const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
-
-  React.useEffect(() => {
-    setPortalContainer(document.body);
-  }, []);
+  const portalContainer = usePortal();
 
   if (!isOpen || items.length === 0 || !portalContainer) return null;
 

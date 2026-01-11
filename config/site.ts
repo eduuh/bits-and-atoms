@@ -1,8 +1,8 @@
 export const siteConfig = {
   name: 'EduuhMuraya',
   description: 'A personal developer blog built with Next.js and MDX',
-  url: 'https://eduuhmuraya.com',
-  ogImage: 'https://eduuhmuraya.com/og.jpg',
+  url: 'https://eduuh.com',
+  ogImage: 'https://eduuh.com/og.jpg',
   links: {
     github: 'https://github.com/eduuh',
     linkedin: 'https://linkedin.com/in/eduuh',
