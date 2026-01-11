@@ -80,7 +80,7 @@ export function TableOfContents({ source }: TableOfContentsProps) {
   if (headings.length === 0) return null;
 
   return (
-    <nav ref={navRef} className="sticky top-24 self-start hidden lg:block relative">
+    <nav ref={navRef} className="sticky top-24 self-start hidden lg:block relative max-h-[calc(100vh-8rem)] overflow-y-auto">
       <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">
         Table of Contents
       </h4>
