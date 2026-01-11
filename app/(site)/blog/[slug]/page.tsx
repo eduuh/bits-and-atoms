@@ -13,9 +13,15 @@ import { formatDate } from '@/lib/utils';
 import { Metadata } from 'next';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { siteConfig } from '@/config/site';
+import {
+  generateBlogPostSchema,
+  generateBreadcrumbSchema,
+  combineSchemas,
+} from '@/lib/seo/schema';
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const post = getPostBySlug(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const post = getPostBySlug(slug);
   if (!post) {
     return {};
   }
@@ -55,27 +61,32 @@ export async function generateStaticParams() {
   }));
 }
 
-export default function BlogPost({ params }: { params: { slug: string } }) {
-  const post = getPostBySlug(params.slug);
+export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const post = getPostBySlug(slug);
 
   if (!post) {
     notFound();
   }
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: post.frontmatter.title,
-    datePublished: post.frontmatter.publishedAt,
-    dateModified: post.frontmatter.updatedAt || post.frontmatter.publishedAt,
+  // Auto-generate structured data schemas
+  const blogPostSchema = generateBlogPostSchema({
+    title: post.frontmatter.title,
     description: post.frontmatter.summary,
-    image: post.frontmatter.image ? [`${siteConfig.url}${post.frontmatter.image}`] : [`${siteConfig.url}/og.jpg`],
-    url: `${siteConfig.url}/blog/${post.slug}`,
-    author: {
-      '@type': 'Person',
-      name: siteConfig.name,
-    },
-  };
+    publishedAt: post.frontmatter.publishedAt,
+    updatedAt: post.frontmatter.updatedAt,
+    slug: post.slug,
+    image: post.frontmatter.image,
+    tags: post.frontmatter.tags,
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', url: siteConfig.url },
+    { name: 'Blog', url: `${siteConfig.url}/blog` },
+    { name: post.frontmatter.title, url: `${siteConfig.url}/blog/${post.slug}` },
+  ]);
+
+  const combinedSchema = combineSchemas(blogPostSchema, breadcrumbSchema);
 
   return (
     <ReadingModeProvider>
@@ -83,7 +94,7 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
       <article className="min-h-screen bg-background">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(combinedSchema) }}
         />
         
         <div className="relative w-full h-[35vh] min-h-[300px] flex flex-col justify-end pb-8 overflow-hidden">

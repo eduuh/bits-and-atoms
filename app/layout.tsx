@@ -1,10 +1,23 @@
 import './global.css';
 import type { Metadata } from 'next';
-import { GoogleAnalytics } from '@next/third-parties/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { AppProviders } from '@/components/providers/ThemeProvider';
 import { siteConfig } from '@/config/site';
+import { generateWebSiteSchema } from '@/lib/seo/schema';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -45,9 +58,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const websiteSchema = generateWebSiteSchema();
+
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="antialiased bg-background text-foreground min-h-screen flex flex-col">
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className="antialiased bg-background text-foreground min-h-screen flex flex-col font-sans">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
         <AppProviders themeProps={{ attribute: "class", defaultTheme: "system", enableSystem: true }}>
           <a href="#main-content" className="skip-link">
             Skip to main content
@@ -58,9 +77,6 @@ export default function RootLayout({
           </div>
           <Footer />
         </AppProviders>
-        {process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS && (
-          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS} />
-        )}
       </body>
     </html>
   );

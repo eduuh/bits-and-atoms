@@ -4,9 +4,12 @@ import { ArrowRight } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { PageContainer } from '@/components/layout/PageContainer';
+import { siteConfig } from '@/config/site';
+import { generateCollectionPageSchema, generateBreadcrumbSchema, combineSchemas } from '@/lib/seo/schema';
 
-export async function generateMetadata({ params }: { params: { tag: string } }): Promise<Metadata> {
-  const decodedTag = decodeURIComponent(params.tag);
+export async function generateMetadata({ params }: { params: Promise<{ tag: string }> }): Promise<Metadata> {
+  const { tag } = await params;
+  const decodedTag = decodeURIComponent(tag);
   return {
     title: `Posts tagged with "${decodedTag}"`,
     description: `Browse all articles and tutorials about ${decodedTag}.`,
@@ -20,8 +23,8 @@ export async function generateStaticParams() {
   }));
 }
 
-export default function TagPage({ params }: { params: { tag: string } }) {
-  const { tag } = params;
+export default async function TagPage({ params }: { params: Promise<{ tag: string }> }) {
+  const { tag } = await params;
   const decodedTag = decodeURIComponent(tag);
   const posts = getAllPosts().filter((post) =>
     post.frontmatter.tags?.includes(decodedTag)
@@ -31,8 +34,32 @@ export default function TagPage({ params }: { params: { tag: string } }) {
     notFound();
   }
 
+  // Auto-generate structured data schemas
+  const collectionSchema = generateCollectionPageSchema({
+    name: `Posts tagged with "${decodedTag}"`,
+    description: `Browse all articles and tutorials about ${decodedTag}.`,
+    url: `${siteConfig.url}/tags/${encodeURIComponent(decodedTag)}`,
+    items: posts.map((post) => ({
+      title: post.frontmatter.title,
+      url: `${siteConfig.url}/blog/${post.slug}`,
+      description: post.frontmatter.summary,
+    })),
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', url: siteConfig.url },
+    { name: 'Tags', url: `${siteConfig.url}/tags` },
+    { name: decodedTag, url: `${siteConfig.url}/tags/${encodeURIComponent(decodedTag)}` },
+  ]);
+
+  const combinedSchema = combineSchemas(collectionSchema, breadcrumbSchema);
+
   return (
     <PageContainer className="py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(combinedSchema) }}
+      />
       <div className="mb-12 flex items-baseline justify-between border-b border-border pb-6">
         <h1 className="text-3xl font-bold uppercase tracking-tight">
           {decodedTag}

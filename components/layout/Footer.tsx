@@ -4,7 +4,9 @@ import { Github, Linkedin } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-background" role="contentinfo">
+    <footer className="relative bg-background" role="contentinfo">
+      {/* Gradient top border */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
       <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         
         {/* Left: Brand & Copyright */}
@@ -32,21 +34,21 @@ export function Footer() {
 
         {/* Right: Socials */}
         <div className="flex items-center gap-4" role="group" aria-label="Social media links">
-          <a 
-            href={siteConfig.links.github} 
-            target="_blank" 
+          <a
+            href={siteConfig.links.github}
+            target="_blank"
             rel="noreferrer"
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-primary transition-all duration-200 hover:scale-110"
             aria-label="GitHub profile (opens in new tab)"
           >
             <Github className="w-5 h-5" aria-hidden="true" />
             <span className="sr-only">GitHub</span>
           </a>
-          <a 
-            href={siteConfig.links.linkedin} 
-            target="_blank" 
+          <a
+            href={siteConfig.links.linkedin}
+            target="_blank"
             rel="noreferrer"
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-primary transition-all duration-200 hover:scale-110"
             aria-label="LinkedIn profile (opens in new tab)"
           >
             <Linkedin className="w-5 h-5" aria-hidden="true" />

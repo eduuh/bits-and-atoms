@@ -8,7 +8,7 @@
 
 # next.js
 /.next/
-/out/
+/out
 
 # production
 /build
@@ -27,6 +27,10 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# cloudflare
+.open-next
+.wrangler
 
 # typescript
 *.tsbuildinfo
