@@ -159,23 +159,6 @@ h1, h2, h3 {
   letter-spacing: -0.02em;
 }
 
-/* Animated gradient for header accent */
-.header-gradient {
-  background: linear-gradient(
-    90deg,
-    hsl(var(--primary)) 0%,
-    hsl(var(--accent-purple)) 50%,
-    hsl(var(--primary)) 100%
-  );
-  background-size: 200% 100%;
-  animation: gradient-shift 3s ease infinite;
-}
-
-@keyframes gradient-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
 /* Glow effect utilities - using CSS variables */
 .glow-primary {
   box-shadow: var(--glow-sm);

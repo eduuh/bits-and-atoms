@@ -56,10 +56,6 @@ export function HeaderContent({ posts }: HeaderContentProps) {
       )}
       role="banner"
     >
-      {/* Animated gradient bottom border */}
-      {!isTransparentHeader && (
-        <div className="absolute bottom-0 left-0 right-0 h-[2px] header-gradient" />
-      )}
       <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between relative">
         {/* Logo / Title */}
         <Link
