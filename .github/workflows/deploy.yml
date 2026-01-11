@@ -5,18 +5,13 @@ on:
     branches:
       - main
       - staging
-  pull_request:
-    branches:
-      - main
-      - staging
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
-      pull-requests: write
 
     steps:
       - name: Checkout
@@ -34,16 +29,13 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Set deployment environment
+      - name: Set environment
         id: env
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "environment=preview" >> $GITHUB_OUTPUT
-            echo "branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "environment=production" >> $GITHUB_OUTPUT
             echo "branch=main" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+          else
             echo "environment=staging" >> $GITHUB_OUTPUT
             echo "branch=staging" >> $GITHUB_OUTPUT
           fi
@@ -56,53 +48,8 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy out --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME }} --branch=${{ steps.env.outputs.branch }}
 
-      - name: Comment PR with preview URL
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const deploymentUrl = '${{ steps.deploy.outputs.deployment-url }}';
-            const environment = '${{ steps.env.outputs.environment }}';
-
-            const body = `## 🚀 Deployment Preview
-
-            | Environment | URL |
-            |-------------|-----|
-            | ${environment} | ${deploymentUrl} |
-
-            Built from commit: \`${{ github.sha }}\``;
-
-            // Find existing comment
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const botComment = comments.find(comment =>
-              comment.user.type === 'Bot' &&
-              comment.body.includes('🚀 Deployment Preview')
-            );
-
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: body
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: body
-              });
-            }
-
-      - name: Output deployment URL
+      - name: Summary
         run: |
-          echo "### Deployment Complete! :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Deployed to ${{ steps.env.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** ${{ steps.env.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "**URL:** ${{ steps.deploy.outputs.deployment-url }}" >> $GITHUB_STEP_SUMMARY
