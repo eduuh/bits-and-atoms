@@ -12,6 +12,7 @@ jobs:
     permissions:
       contents: read
       deployments: write
+      pull-requests: write
 
     steps:
       - name: Checkout
@@ -47,6 +48,40 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy out --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME }} --branch=${{ steps.env.outputs.branch }}
+
+      - name: Comment on merged PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: commits } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+            });
+
+            if (commits.length === 0) {
+              console.log('No PR associated with this commit');
+              return;
+            }
+
+            const pr = commits[0];
+            const environment = '${{ steps.env.outputs.environment }}';
+            const deploymentUrl = '${{ steps.deploy.outputs.deployment-url }}';
+
+            const body = `## 🚀 Deployed to ${environment}
+
+| Environment | URL |
+|-------------|-----|
+| ${environment} | ${deploymentUrl} |
+
+Deployed from commit \`${context.sha.substring(0, 7)}\``;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: body
+            });
 
       - name: Summary
         run: |
