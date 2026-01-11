@@ -86,13 +86,15 @@ jobs:
             const environment = '${{ steps.env.outputs.environment }}';
             const deploymentUrl = '${{ steps.deploy.outputs.deployment-url }}';
 
-            const body = `## 🚀 Deployed to ${environment}
-
-| Environment | URL |
-|-------------|-----|
-| ${environment} | ${deploymentUrl} |
-
-Deployed from commit \`${context.sha.substring(0, 7)}\``;
+            const body = [
+              `## Deployed to ${environment}`,
+              '',
+              '| Environment | URL |',
+              '|-------------|-----|',
+              `| ${environment} | ${deploymentUrl} |`,
+              '',
+              `Deployed from commit \`${context.sha.substring(0, 7)}\``
+            ].join('\n');
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
