@@ -8,6 +8,7 @@ import { SandpackDemo } from './SandpackDemo';
 import { D2Diagram } from './D2Diagram';
 import { Kbd } from './Kbd';
 import { CustomLink } from './CustomLink';
+import { CodeBlock } from './CodeBlock';
 
 const options = {
   theme: 'github-dark',
@@ -20,6 +21,7 @@ const components = {
   D2Diagram,
   Kbd,
   a: CustomLink,
+  pre: CodeBlock,
 };
 
 export function MDXContent({ source }: { source: string }) {

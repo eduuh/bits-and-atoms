@@ -293,3 +293,30 @@ pre[data-theme][data-line-numbers] code {
   overflow-wrap: normal;
 }
 
+/* ================================
+   Copy Button Styles
+   ================================ */
+
+/* Code block wrapper for positioning */
+.code-block-wrapper {
+  position: relative;
+}
+
+/* Copy button - hidden by default on desktop, visible on hover */
+.code-block-wrapper .copy-button {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.code-block-wrapper:hover .copy-button,
+.code-block-wrapper .copy-button:focus {
+  opacity: 1;
+}
+
+/* Always visible on mobile/touch devices */
+@media (pointer: coarse), (max-width: 640px) {
+  .code-block-wrapper .copy-button {
+    opacity: 1;
+  }
+}
+
