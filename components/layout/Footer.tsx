@@ -7,10 +7,10 @@ export function Footer() {
     <footer className="relative bg-background" role="contentinfo">
       {/* Gradient top border */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
-      <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col items-center md:flex-row md:items-center justify-between gap-6 text-center md:text-left">
+
         {/* Left: Brand & Copyright */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1">
           <Link href="/" className="font-bold tracking-tight text-foreground" aria-label="Home">
             {siteConfig.header.logo.text}<span className="text-muted-foreground">{siteConfig.header.logo.highlight}</span>
           </Link>
@@ -20,11 +20,11 @@ export function Footer() {
         </div>
 
         {/* Middle: Links */}
-        <nav className="flex flex-wrap gap-6 text-sm text-muted-foreground" aria-label="Footer navigation">
+        <nav className="flex flex-wrap justify-center md:justify-start gap-4 sm:gap-6 text-sm text-muted-foreground" aria-label="Footer navigation">
           {siteConfig.nav.map((link) => (
-            <Link 
-              key={link.href} 
-              href={link.href} 
+            <Link
+              key={link.href}
+              href={link.href}
               className="hover:text-foreground transition-colors"
             >
               {link.title}

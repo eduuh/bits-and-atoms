@@ -149,7 +149,7 @@ export function CommandMenu({ posts }: CommandMenuProps) {
         </span>
 
         <Command.List
-          className="max-h-[60vh] overflow-y-auto overscroll-contain p-2"
+          className="max-h-[50vh] sm:max-h-[60vh] overflow-y-auto overscroll-contain p-2"
           aria-label="Search results"
         >
           {/* Tag Results */}

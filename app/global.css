@@ -207,3 +207,89 @@ pre[data-theme] {
   box-shadow: 0 0 30px -15px hsl(var(--primary) / 0.15);
 }
 
+/* ================================
+   Code Block Mobile Fixes
+   ================================ */
+
+/* Ensure code blocks are horizontally scrollable on mobile */
+pre {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Code blocks with line numbers - fix overflow on mobile */
+pre[data-theme] {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure code content doesn't overflow container */
+pre[data-theme] code {
+  display: block;
+  width: fit-content;
+  min-width: 100%;
+}
+
+/* Line numbers styling - keep them visible while allowing horizontal scroll */
+pre[data-theme] code > [data-line] {
+  display: inline-block;
+  width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* When line numbers are shown (data-line-numbers attribute) */
+pre[data-theme][data-line-numbers] code > [data-line] {
+  padding-left: 0;
+}
+
+pre[data-theme][data-line-numbers] code > [data-line]::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 2rem;
+  margin-right: 1rem;
+  text-align: right;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.5;
+}
+
+pre[data-theme][data-line-numbers] code {
+  counter-reset: line;
+}
+
+/* Mobile-specific code block improvements */
+@media (max-width: 640px) {
+  /* Reduce padding on mobile for more code visibility */
+  pre[data-theme] {
+    padding: 0.75rem 0;
+    font-size: 0.8125rem;
+    border-radius: 0.5rem;
+  }
+
+  pre[data-theme] code > [data-line] {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Smaller line numbers on mobile */
+  pre[data-theme][data-line-numbers] code > [data-line]::before {
+    width: 1.5rem;
+    margin-right: 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Prose code block overrides for proper overflow */
+.prose pre {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+.prose pre code {
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+

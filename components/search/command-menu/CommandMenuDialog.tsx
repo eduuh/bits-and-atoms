@@ -45,9 +45,9 @@ export function CommandMenuDialog({
             exit="exit"
           />
 
-          {/* Command Dialog - Positioned at top like VS Code */}
+          {/* Command Dialog - Positioned at top like VS Code, lower on mobile to avoid browser chrome */}
           <motion.div
-            className="fixed left-1/2 top-[12%] w-full max-w-[640px] -translate-x-1/2 px-4"
+            className="fixed left-1/2 top-[20%] sm:top-[12%] w-full max-w-[640px] -translate-x-1/2 px-3 sm:px-4"
             style={{ zIndex: 100000 }}
             role="dialog"
             aria-modal="true"
@@ -64,8 +64,8 @@ export function CommandMenuDialog({
               <Command shouldFilter={false} className="w-full" label="Search commands">
                 {children}
 
-                {/* Footer with keyboard hints */}
-                <div className="flex items-center justify-between border-t border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
+                {/* Footer with keyboard hints - hidden on mobile, simplified for touch devices */}
+                <div className="hidden sm:flex items-center justify-between border-t border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
                   <div className="flex items-center gap-4">
                     <span className="flex items-center gap-1.5">
                       <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
@@ -108,6 +108,10 @@ export function CommandMenuDialog({
                       </span>
                     )}
                   </div>
+                </div>
+                {/* Mobile footer - simpler hint */}
+                <div className="sm:hidden flex items-center justify-center border-t border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                  <span>Tap to select · Use # for tags</span>
                 </div>
               </Command>
             </div>

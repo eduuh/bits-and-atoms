@@ -55,7 +55,7 @@ export const CommandMenuInput = forwardRef<HTMLInputElement, CommandMenuInputPro
     };
 
     return (
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-border px-3 sm:px-4 py-3">
         <SearchIcon
           className="h-5 w-5 shrink-0 text-muted-foreground"
           aria-hidden="true"
@@ -95,7 +95,7 @@ export const CommandMenuInput = forwardRef<HTMLInputElement, CommandMenuInputPro
 
         <button
           onClick={onClose}
-          className="rounded-md p-1 hover:bg-accent"
+          className="rounded-md p-2 hover:bg-accent touch-manipulation"
           aria-label="Close search"
           type="button"
         >
