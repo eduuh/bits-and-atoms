@@ -1,0 +1,110 @@
+---
+title: Homelab Hardware
+slug: homelab-hardware
+publishedAt: '2026-01-14'
+summary: A look at the mini PCs powering my Kubernetes homelab. Three compact, power-efficient machines running 24/7.
+tags:
+  - Infrastructure
+  - Hardware
+  - Self-Hosted
+published: true
+series:
+  title: Home Lab
+  order: 1
+---
+
+Before diving into software and services, let's talk hardware. My homelab runs on three mini PCs, chosen for their balance of performance, power efficiency, and price.
+
+## The Firewall and Control Plane: Glovary
+
+![Glovary back panel with 4 ethernet ports](/images/Screenshot%202026-01-13%20at%2023.59.48.png)
+
+![Glovary front panel](/images/Screenshot%202026-01-14%20at%2000.00.18.png)
+
+This Glovary appliance serves double duty. It has four Intel i226-V 2.5GbE NICs, making it perfect for running OPNsense as my firewall. On the same box, I run Proxmox to host a VM that acts as my Kubernetes control plane (`intel-c-firewall`).
+
+**Specs:**
+- CPU: Intel N100 (4 cores)
+- RAM: 8 GB
+- Storage: 128 GB NVMe
+- Network: 4x 2.5GbE Intel i226-V
+
+The N100 is surprisingly capable for this workload. It handles firewall duties and the Kubernetes API server without breaking a sweat.
+
+## The Primary Worker: AMD Mini PC
+
+![AMD mini PC](/images/Screenshot%202026-01-14%20at%2001.20.23.png)
+
+![Front panel ports](/images/Screenshot%202026-01-14%20at%2001.19.52.png)
+
+![Back panel ports](/images/Screenshot%202026-01-14%20at%2001.20.01.png)
+
+This AMD-based mini PC (`amd-w-minipc`) is the workhorse of the cluster. With 16 cores, it handles most of the application workloads.
+
+**Specs:**
+- CPU: AMD Ryzen (16 cores)
+- RAM: 13 GB
+- Storage: ~1 TB
+- Network: 2.5GbE
+
+The 2.5GbE port is essential for keeping up with storage traffic between nodes.
+
+## The Storage Worker: ACEMAGIC
+
+![ACEMAGIC mini PC with display](/images/Screenshot%202026-01-14%20at%2001.18.46.png)
+
+The ACEMAGIC (`intel-w-acemagic`) has a neat built-in display showing power consumption and temperatures. It currently handles storage-heavy workloads.
+
+**Specs:**
+- CPU: Intel (4 cores)
+- RAM: 16 GB
+- Storage: ~1 TB
+- Network: 2.5GbE
+
+The higher RAM makes it good for caching and storage operations with Longhorn.
+
+## Why Mini PCs?
+
+A few reasons:
+
+**Power efficiency.** The entire cluster runs on about 50W idle. That's less than a single traditional server and means I can run 24/7 without worrying about the electricity bill.
+
+**Quiet operation.** These sit in my living space. Silence matters.
+
+**Compact footprint.** Three mini PCs take up less space than a single rack-mount server.
+
+**Affordable.** Each unit cost between $200-400. Compare that to enterprise hardware.
+
+## Network Topology
+
+All three nodes connect to a managed switch with 2.5GbE ports. The Glovary firewall handles routing between VLANs and provides internet access.
+
+```
+Internet → Glovary (OPNsense) → Managed Switch → Worker Nodes
+                ↓
+         Proxmox VM (Control Plane)
+```
+
+## Power Consumption
+
+I measured with a smart plug:
+- Idle: ~50W total
+- Under load: ~80-100W
+
+That's roughly 36 kWh per month at idle, or about $5-10 depending on your electricity rates.
+
+## What I'd Change
+
+Looking back, a few things I'd do differently:
+
+**More RAM on the control plane.** 8 GB works but 16 GB would be more comfortable for running additional services.
+
+**Matching NICs.** Having consistent 2.5GbE across all nodes simplifies networking.
+
+**NVMe everywhere.** Some nodes still have SATA SSDs. NVMe makes a noticeable difference for etcd and database workloads.
+
+## Next Steps
+
+I have an old laptop with an Intel Core i7 (8th gen) that would be great for Jellyfin transcoding. Planning to add it to the cluster and repurpose the ACEMAGIC for something else.
+
+Check out [My Home Lab](/posts/my-home-lab) for the full software stack running on this hardware.

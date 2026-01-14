@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { siteConfig } from '@/config/site';
-import { Calendar, BookOpen, Code2, Briefcase, Music, MapPin } from 'lucide-react';
+import { Calendar, BookOpen, Code2, Briefcase, Music, MapPin, Wrench, Heart } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Now',
@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 // Update this date whenever you update the page content
-const lastUpdated = '2025-12-13';
+const lastUpdated = '2026-01-14';
 
 export default function NowPage() {
   return (
@@ -77,15 +77,19 @@ export default function NowPage() {
             <li className="flex items-start gap-3">
               <span className="text-primary mt-1">→</span>
               <span className="text-muted-foreground">
-                <span className="text-foreground font-medium">This blog</span> — 
-                A modern developer blog with MDX, dark mode, and knowledge graph visualization
+                <span className="text-foreground font-medium">This blog</span>: a modern developer blog with MDX, dark mode, and knowledge graph visualization
               </span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-primary mt-1">→</span>
               <span className="text-muted-foreground">
-                <span className="text-foreground font-medium">Side projects</span> — 
-                Experimenting with AI integrations and developer tools
+                Exploring AI-assisted development with <span className="text-foreground font-medium">Claude Code</span>
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="text-primary mt-1">→</span>
+              <span className="text-muted-foreground">
+                <a href="/posts/my-home-lab" className="text-foreground font-medium hover:text-primary">My homelab</a>: a Kubernetes cluster on Talos Linux with GitOps, self-hosted services, and full observability
               </span>
             </li>
           </ul>
@@ -107,7 +111,7 @@ export default function NowPage() {
             <li className="flex items-start gap-3">
               <span className="text-primary mt-1">→</span>
               <span className="text-muted-foreground">
-                Exploring <span className="text-foreground font-medium">AI/ML fundamentals</span> and their applications in web development
+                <a href="/posts/my-home-lab" className="text-foreground font-medium hover:text-primary">Homelabbing</a>: Longhorn backups, infrastructure patterns, and expanding into smart home integrations
               </span>
             </li>
           </ul>
@@ -142,10 +146,42 @@ export default function NowPage() {
             Listening
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Lots of <span className="text-foreground font-medium">lo-fi beats</span> and{' '}
-            <span className="text-foreground font-medium">podcasts</span> about tech and startups 
-            while coding.
+            Lots of <span className="text-foreground font-medium">Spotify</span> while coding, and{' '}
+            <a href="https://www.youtube.com/@davidwafulake" target="_blank" rel="noopener noreferrer" className="text-foreground font-medium hover:text-primary">David Wafula</a> for political analysis.
           </p>
+        </section>
+
+        {/* Life */}
+        <section>
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Heart className="w-5 h-5 text-primary" />
+            Life
+          </h2>
+          <p className="text-muted-foreground leading-relaxed">
+            My wife and I are raising a baby boy. <span className="text-foreground font-medium">New dad life!</span>
+          </p>
+        </section>
+
+        {/* Hobbies */}
+        <section>
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Wrench className="w-5 h-5 text-primary" />
+            Hobbies
+          </h2>
+          <ul className="space-y-3">
+            <li className="flex items-start gap-3">
+              <span className="text-primary mt-1">→</span>
+              <span className="text-muted-foreground">
+                Learning to maintain my old <span className="text-foreground font-medium">1998 Lancer</span>
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="text-primary mt-1">→</span>
+              <span className="text-muted-foreground">
+                Cruising on my <span className="text-foreground font-medium">Dominar 400</span> once in a while
+              </span>
+            </li>
+          </ul>
         </section>
 
         {/* Footer note */}
