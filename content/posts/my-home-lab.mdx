@@ -55,9 +55,11 @@ Current versions:
 
 Everything in my cluster is managed through Git. I use [Flux v2](https://fluxcd.io/) for GitOps, which means:
 
-1. All manifests live in a [Git repository](https://github.com/eduuh/kube-homelab)
+1. All manifests live in a Git repository
 2. Flux watches the repo and automatically applies changes
 3. Secrets are encrypted with [SOPS](https://github.com/getsops/sops) + [age](https://github.com/FiloSottile/age), with some stored in [1Password](https://1password.com/)
+
+<GitHubRepo repo="eduuh/kube-homelab" description="GitOps repository for my Kubernetes homelab - Talos Linux, Flux, and all the YAML" />
 
 ```
 cluster/

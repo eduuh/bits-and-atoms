@@ -9,6 +9,7 @@ import { D2Diagram } from './D2Diagram';
 import { Kbd } from './Kbd';
 import { CustomLink } from './CustomLink';
 import { CodeBlock } from './CodeBlock';
+import { GitHubRepo } from './GitHubRepo';
 
 const options = {
   theme: 'github-dark',
@@ -20,6 +21,7 @@ const components = {
   SandpackDemo,
   D2Diagram,
   Kbd,
+  GitHubRepo,
   a: CustomLink,
   pre: CodeBlock,
 };

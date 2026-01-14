@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 import { siteConfig } from '@/config/site';
 import { Calendar, BookOpen, Code2, Briefcase, Music, MapPin, Wrench, Heart } from 'lucide-react';
 
@@ -89,7 +90,7 @@ export default function NowPage() {
             <li className="flex items-start gap-3">
               <span className="text-primary mt-1">→</span>
               <span className="text-muted-foreground">
-                <a href="/blog/my-home-lab" className="text-foreground font-medium hover:text-primary">My homelab</a>: a 3-node Kubernetes cluster on Talos Linux running Jellyfin, Immich, Nextcloud, and 15+ self-hosted services - all managed with GitOps
+                <Link href="/blog/my-home-lab" className="text-foreground font-medium hover:text-primary">My homelab</Link>: a 3-node Kubernetes cluster on Talos Linux running Jellyfin, Immich, Nextcloud, and 15+ self-hosted services - all managed with GitOps
               </span>
             </li>
           </ul>
@@ -111,7 +112,7 @@ export default function NowPage() {
             <li className="flex items-start gap-3">
               <span className="text-primary mt-1">→</span>
               <span className="text-muted-foreground">
-                <a href="/blog/homelab-hardware" className="text-foreground font-medium hover:text-primary">Homelabbing</a>: vertical scaling with 4TB SSDs, Longhorn backups, and planning to add an old Dell laptop for Jellyfin transcoding
+                <Link href="/blog/homelab-hardware" className="text-foreground font-medium hover:text-primary">Homelabbing</Link>: vertical scaling with 4TB SSDs, Longhorn backups, and planning to add an old Dell laptop for Jellyfin transcoding
               </span>
             </li>
           </ul>
