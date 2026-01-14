@@ -50,8 +50,8 @@ export default function NowPage() {
             Location
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Based in <span className="text-foreground font-medium">{siteConfig.about.location}</span>, 
-            working remotely.
+            Based in <span className="text-foreground font-medium">{siteConfig.about.location}</span>,
+            working remotely (mostly) and sometimes in the office.
           </p>
         </section>
 
@@ -62,8 +62,8 @@ export default function NowPage() {
             Work
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Currently focused on building this developer blog template and exploring 
-            new web technologies. Always looking for interesting projects and collaborations.
+            Working a <span className="text-foreground font-medium">9-6 full-time role</span> as a software engineer.
+            Outside of work, I build side projects and tinker with my homelab.
           </p>
         </section>
 
@@ -89,7 +89,7 @@ export default function NowPage() {
             <li className="flex items-start gap-3">
               <span className="text-primary mt-1">→</span>
               <span className="text-muted-foreground">
-                <a href="/posts/my-home-lab" className="text-foreground font-medium hover:text-primary">My homelab</a>: a Kubernetes cluster on Talos Linux with GitOps, self-hosted services, and full observability
+                <a href="/blog/my-home-lab" className="text-foreground font-medium hover:text-primary">My homelab</a>: a 3-node Kubernetes cluster on Talos Linux running Jellyfin, Immich, Nextcloud, and 15+ self-hosted services - all managed with GitOps
               </span>
             </li>
           </ul>
@@ -111,7 +111,7 @@ export default function NowPage() {
             <li className="flex items-start gap-3">
               <span className="text-primary mt-1">→</span>
               <span className="text-muted-foreground">
-                <a href="/posts/my-home-lab" className="text-foreground font-medium hover:text-primary">Homelabbing</a>: Longhorn backups, infrastructure patterns, and expanding into smart home integrations
+                <a href="/blog/homelab-hardware" className="text-foreground font-medium hover:text-primary">Homelabbing</a>: vertical scaling with 4TB SSDs, Longhorn backups, and planning to add an old Dell laptop for Jellyfin transcoding
               </span>
             </li>
           </ul>
@@ -146,7 +146,7 @@ export default function NowPage() {
             Listening
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Lots of <span className="text-foreground font-medium">Spotify</span> while coding, and{' '}
+            Lots of <a href="https://open.spotify.com/user/31iprdhrtas54bqaqpqeb57xumpq?si=4f3880da387f440f" target="_blank" rel="noopener noreferrer" className="text-foreground font-medium hover:text-primary">Spotify</a> while coding, and{' '}
             <a href="https://www.youtube.com/@davidwafulake" target="_blank" rel="noopener noreferrer" className="text-foreground font-medium hover:text-primary">David Wafula</a> for political analysis.
           </p>
         </section>
