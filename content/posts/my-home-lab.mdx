@@ -4,7 +4,6 @@ slug: my-home-lab
 publishedAt: '2026-01-13'
 summary: A deep dive into my Kubernetes-based homelab running on Talos Linux with GitOps, self-hosted services, and full observability.
 tags:
-  - Infrastructure
   - Kubernetes
   - Self-Hosted
 published: true
@@ -16,7 +15,7 @@ series:
 
 A homelab is more than just servers in a closet - it's a playground for learning, a production environment for self-hosted services, and a way to take control of your own data. Here's a comprehensive tour of my setup.
 
-For details on the physical machines, check out [Homelab Hardware](/posts/homelab-hardware).
+For details on the physical machines, check out [Homelab Hardware](/blog/homelab-hardware).
 
 ## The Hardware
 
@@ -148,6 +147,14 @@ This enables hardlinks - when Sonarr moves a completed download, it's instant wi
 - **[IT-Tools](https://github.com/CorentinTh/it-tools):** Developer utilities collection
 - **[Uptime Kuma](https://github.com/louislam/uptime-kuma):** Status monitoring
 
+### The Dashboard
+
+Glance ties everything together with a clean overview of all services:
+
+![Glance dashboard showing all homelab services](/images/Screenshot%202026-01-14%20at%2019.18.11.png)
+
+The dashboard displays service health, response times, and organizes everything into logical categories - Applications, Media, Monitoring, and Infrastructure. It's the first thing I check when troubleshooting.
+
 ## Observability
 
 You can't manage what you can't measure. My monitoring stack includes:
@@ -209,8 +216,10 @@ The current storage setup works, but there's room to grow:
 - **NAS:** A dedicated NAS for large-scale storage and off-cluster backups
 - **SSD upgrades:** 2x 4TB 2.5" SSDs available for expanding cluster storage
 - **OS storage:** 1TB dedicated for OS-level operations
-- **Jellyfin node:** An old laptop with Intel Core i7 (8th gen) would be ideal for Jellyfin - plenty of compute for hardware transcoding
+- **Jellyfin node:** An old Dell laptop with Intel Core i7 (8th gen) would be ideal for Jellyfin - plenty of compute for hardware transcoding
 - **Repurpose intel-w-acemagic:** This node has low compute power, so I'm planning to replace it with the laptop and find a new role for it
+
+![Dell laptop internals showing the motherboard, 42Wh battery, and upgrade potential](/images/20260114_192856.jpg)
 
 This would separate bulk media storage from application data, improving both performance and backup strategies. With more storage capacity, I could also explore self-hosting smart home camera feeds.
 

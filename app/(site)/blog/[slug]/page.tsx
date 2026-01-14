@@ -144,7 +144,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                   {post.frontmatter.title}
                 </h1>
                 
-                <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
                   <time dateTime={post.frontmatter.publishedAt}>
                     {formatDate(post.frontmatter.publishedAt)}
                   </time>
@@ -170,7 +170,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
         <PageContainer className="py-8">
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_200px] gap-8">
-            <div className="prose prose-neutral dark:prose-invert max-w-none prose-headings:scroll-mt-20 prose-a:text-primary prose-a:underline hover:prose-a:text-muted-foreground transition-colors">
+            <div className="prose prose-neutral dark:prose-invert max-w-prose prose-headings:scroll-mt-20 prose-a:text-primary prose-a:underline hover:prose-a:text-muted-foreground transition-colors">
               <ReadingMode title={post.frontmatter.title} summary={post.frontmatter.summary}>
                 <MDXContent source={post.content} />
               </ReadingMode>
