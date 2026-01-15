@@ -88,14 +88,14 @@ export const CommandMenuInput = forwardRef<HTMLInputElement, CommandMenuInputPro
           value={query}
           onValueChange={onQueryChange}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+          className="flex-1 bg-transparent text-base placeholder:text-muted-foreground"
           aria-label="Search input"
           aria-describedby="search-help"
         />
 
         <button
           onClick={onClose}
-          className="rounded-md p-2 hover:bg-accent touch-manipulation"
+          className="rounded-md p-3 sm:p-2 hover:bg-accent touch-manipulation"
           aria-label="Close search"
           type="button"
         >

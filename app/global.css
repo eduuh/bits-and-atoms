@@ -141,6 +141,14 @@ select:focus-visible {
   border-color: hsl(var(--primary)) !important;
 }
 
+/* Remove focus outline from command menu search input */
+[cmdk-input]:focus,
+[cmdk-input]:focus-visible {
+  outline: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
 /* Ensure sufficient touch targets on mobile */
 @media (pointer: coarse) {
   a, button, [role="button"] {

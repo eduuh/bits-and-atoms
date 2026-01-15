@@ -53,7 +53,7 @@ export function GrepResults({
                   )}
                 </div>
                 {onAddToQuickReadList && (
-                  <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 group-aria-selected:opacity-100 transition-all duration-150">
+                  <div className="shrink-0 flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 group-aria-selected:opacity-100 transition-all duration-150">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
