@@ -1,0 +1,86 @@
+---
+title: Interactive Code Playgrounds Demo
+published: false
+slug: test-playground-components
+publishedAt: '2026-02-01'
+summary: Demonstrating the new interactive code playground components
+tags:
+  - tutorial
+  - javascript
+---
+
+## Full Sandpack Playground
+
+A complete React environment with live preview:
+
+<Playground
+  template="react"
+  title="Counter Example"
+  description="A simple React counter with useState hook"
+  files={{
+    "/App.js": `import { useState } from 'react';
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div style={{
+      padding: 20,
+      fontFamily: 'system-ui',
+      textAlign: 'center'
+    }}>
+      <h1>Count: {count}</h1>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+        <button onClick={() => setCount(c => c - 1)}>-</button>
+        <button onClick={() => setCount(c => c + 1)}>+</button>
+      </div>
+    </div>
+  );
+}`
+  }}
+/>
+
+## Inline JavaScript Playground
+
+Quick code snippets you can edit and run:
+
+<InlinePlayground
+  code={`// Array methods demo
+const fruits = ["apple", "banana", "cherry"];
+
+console.log("Original:", fruits);
+console.log("Uppercase:", fruits.map(f => f.toUpperCase()));
+console.log("Filtered:", fruits.filter(f => f.length > 5));
+
+const total = [1, 2, 3, 4, 5].reduce((sum, n) => sum + n, 0);
+console.log("Sum 1-5:", total);`}
+/>
+
+## Coding Challenge
+
+Test your skills with this interactive exercise:
+
+<CodeExercise
+  title="FizzBuzz"
+  description="Write a function that returns 'Fizz' for multiples of 3, 'Buzz' for multiples of 5, 'FizzBuzz' for both, or the number as a string."
+  starterCode={`function fizzBuzz(n) {
+  // Your code here
+}`}
+  tests={[
+    { input: 3, expected: "Fizz", description: "3 should return 'Fizz'" },
+    { input: 5, expected: "Buzz", description: "5 should return 'Buzz'" },
+    { input: 15, expected: "FizzBuzz", description: "15 should return 'FizzBuzz'" },
+    { input: 7, expected: "7", description: "7 should return '7'" }
+  ]}
+  solution={`function fizzBuzz(n) {
+  if (n % 15 === 0) return "FizzBuzz";
+  if (n % 3 === 0) return "Fizz";
+  if (n % 5 === 0) return "Buzz";
+  return String(n);
+}`}
+  hints={[
+    "Check for divisibility using the modulo operator (%)",
+    "Check FizzBuzz (divisible by both) first!",
+    "Don't forget to convert the number to a string"
+  ]}
+/>
