@@ -14,6 +14,7 @@ import { CustomLink } from './CustomLink';
 import { CodeBlock } from './CodeBlock';
 import { GitHubRepo } from './GitHubRepo';
 import { Terminal } from './Terminal';
+import { CodeDiff } from './CodeDiff';
 
 const options = {
   theme: 'github-dark',
@@ -30,6 +31,7 @@ const components = {
   Kbd,
   GitHubRepo,
   Terminal,
+  CodeDiff,
   a: CustomLink,
   pre: CodeBlock,
 };
