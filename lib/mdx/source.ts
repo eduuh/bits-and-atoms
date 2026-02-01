@@ -5,6 +5,12 @@ import { cache } from 'react';
 
 const POSTS_PATH = path.join(process.cwd(), 'content/posts');
 
+export interface ChangelogEntry {
+  version: string;
+  date: string;
+  changes: string[];
+}
+
 export interface PostFrontmatter {
   title: string;
   slug: string;
@@ -24,6 +30,7 @@ export interface PostFrontmatter {
   // AI-generated content
   aiSummary?: string;
   aiKeyTakeaways?: string[];
+  changelog?: ChangelogEntry[];
 }
 
 export interface Post {

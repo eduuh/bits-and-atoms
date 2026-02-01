@@ -7,6 +7,7 @@ import { ReadingProgressBar } from '@/components/blog/ReadingProgressBar';
 import { Comments } from '@/components/blog/Comments';
 import { AISummary } from '@/components/blog/AISummary';
 import { Webmentions } from '@/components/blog/Webmentions';
+import { Changelog } from '@/components/blog/Changelog';
 import { TableOfContents } from '@/components/mdx/TableOfContents';
 import { TextToSpeech } from '@/components/blog/TextToSpeech';
 import { notFound } from 'next/navigation';
@@ -174,7 +175,8 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_200px] gap-8">
             <div className="prose prose-neutral dark:prose-invert max-w-prose prose-headings:scroll-mt-20 prose-a:text-primary prose-a:underline hover:prose-a:text-muted-foreground transition-colors">
-<<<<<<< HEAD
+              {/* Text-to-Speech Player */}
+              <TextToSpeech content={post.content} title={post.frontmatter.title} />
               {/* AI Summary - shown if available */}
               {post.frontmatter.aiSummary && (
                 <AISummary
@@ -182,10 +184,6 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                   keyTakeaways={post.frontmatter.aiKeyTakeaways}
                 />
               )}
-=======
-              {/* Text-to-Speech Player */}
-              <TextToSpeech content={post.content} title={post.frontmatter.title} />
->>>>>>> 8f99a8e (Add text-to-speech feature for blog posts)
               <ReadingMode title={post.frontmatter.title} summary={post.frontmatter.summary}>
                 <MDXContent source={post.content} />
               </ReadingMode>
@@ -196,8 +194,22 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                   <span className="font-bold text-foreground">
                     {formatDate(post.frontmatter.updatedAt || post.frontmatter.publishedAt)}
                   </span>
+                  {post.frontmatter.changelog && post.frontmatter.changelog.length > 0 && (
+                    <span className="ml-2">
+                      (v{post.frontmatter.changelog.sort((a, b) =>
+                        new Date(b.date).getTime() - new Date(a.date).getTime()
+                      )[0].version})
+                    </span>
+                  )}
                 </p>
               </div>
+
+              {/* Changelog */}
+              {post.frontmatter.changelog && post.frontmatter.changelog.length > 0 && (
+                <div className="not-prose">
+                  <Changelog entries={post.frontmatter.changelog} />
+                </div>
+              )}
 
               {/* Webmentions - social interactions from across the web */}
               <Webmentions slug={post.slug} />
