@@ -21,6 +21,9 @@ export interface PostFrontmatter {
     title: string;
     order: number;
   };
+  // AI-generated content
+  aiSummary?: string;
+  aiKeyTakeaways?: string[];
 }
 
 export interface Post {

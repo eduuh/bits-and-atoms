@@ -5,6 +5,7 @@ import { ReadingModeProvider } from '@/components/blog/ReadingModeContext';
 import { ReadingModeTrigger } from '@/components/blog/ReadingModeTrigger';
 import { ReadingProgressBar } from '@/components/blog/ReadingProgressBar';
 import { Comments } from '@/components/blog/Comments';
+import { AISummary } from '@/components/blog/AISummary';
 import { TableOfContents } from '@/components/mdx/TableOfContents';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -171,6 +172,13 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_200px] gap-8">
             <div className="prose prose-neutral dark:prose-invert max-w-prose prose-headings:scroll-mt-20 prose-a:text-primary prose-a:underline hover:prose-a:text-muted-foreground transition-colors">
+              {/* AI Summary - shown if available */}
+              {post.frontmatter.aiSummary && (
+                <AISummary
+                  summary={post.frontmatter.aiSummary}
+                  keyTakeaways={post.frontmatter.aiKeyTakeaways}
+                />
+              )}
               <ReadingMode title={post.frontmatter.title} summary={post.frontmatter.summary}>
                 <MDXContent source={post.content} />
               </ReadingMode>
