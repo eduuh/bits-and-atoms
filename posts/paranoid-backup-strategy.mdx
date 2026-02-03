@@ -1,0 +1,36 @@
+---
+title: 'How I Sleep at Night: My Paranoid Backup Strategy'
+slug: paranoid-backup-strategy
+publishedAt: '2026-05-03'
+summary: >-
+  Data loss is not an option. Here is my 3-2-1 backup strategy implementation
+  involving NAS, snapshots, and the cloud.
+tags:
+  - Infrastructure
+published: false
+series:
+  title: Home Lab
+  order: 7
+---
+
+I have terabytes of data: photos, documents, code, and media. Losing it would be catastrophic.
+
+## The 3-2-1 Rule
+
+- **3 Copies of Data**
+- **2 Different Media Types**
+- **1 Offsite Copy**
+
+## My Implementation
+
+1.  **Live Data:** Lives on my PC (NVMe SSD) and Proxmox VMs.
+2.  **Local Backup (NAS):** TrueNAS Scale with ZFS.
+    - **Snapshots:** Taken every 15 minutes. I can roll back any file instantly.
+    - **RAID-Z2:** I can lose 2 hard drives without losing data.
+3.  **Offsite Backup:**
+    - **Critical Data:** Encrypted and pushed to Backblaze B2 nightly via Restic.
+    - **Media:** Synced to a remote NAS at a friend's house (we swap backup space).
+
+## Testing Restores
+
+A backup is only as good as your ability to restore it. I schedule monthly "fire drills" where I try to recover a random file or VM to ensure the system works.
