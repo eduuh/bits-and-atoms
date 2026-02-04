@@ -13,6 +13,7 @@ import { Kbd } from './Kbd';
 import { CustomLink } from './CustomLink';
 import { CodeBlock } from './CodeBlock';
 import { GitHubRepo } from './GitHubRepo';
+import { Terminal } from './Terminal';
 
 const options = {
   theme: 'github-dark',
@@ -28,6 +29,7 @@ const components = {
   D2Diagram,
   Kbd,
   GitHubRepo,
+  Terminal,
   a: CustomLink,
   pre: CodeBlock,
 };
