@@ -30,7 +30,7 @@ I wanted:
 - **Production** at `eduuh.com` - public, indexed by search engines
 - **Staging** at `staging.eduuh.com` - private, for testing before going live
 
-Cloudflare Pages handles the deployment, but by default both environments would be public. I needed a way to gate staging behind authentication without adding complexity to my app.
+Cloudflare Pages handles the deployment, but by default both environments would be public.<Footnote id={1}>Cloudflare Pages automatically creates preview deployments for every branch and pull request, which are publicly accessible by default.</Footnote> I needed a way to gate staging behind authentication without adding complexity to my app.
 
 ## The Stack
 

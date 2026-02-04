@@ -15,6 +15,8 @@ import { CodeBlock } from './CodeBlock';
 import { GitHubRepo } from './GitHubRepo';
 import { Terminal } from './Terminal';
 import { CodeDiff } from './CodeDiff';
+import { Footnote } from './Footnote';
+import { Sidenote } from './Sidenote';
 
 const options = {
   theme: 'github-dark',
@@ -32,6 +34,8 @@ const components = {
   GitHubRepo,
   Terminal,
   CodeDiff,
+  Footnote,
+  Sidenote,
   a: CustomLink,
   pre: CodeBlock,
 };
