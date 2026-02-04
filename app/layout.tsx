@@ -62,6 +62,11 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <head>
+        {/* Webmention support for IndieWeb */}
+        <link rel="webmention" href="https://webmention.io/eduuh.com/webmention" />
+        <link rel="pingback" href="https://webmention.io/eduuh.com/xmlrpc" />
+      </head>
       <body className="antialiased bg-background text-foreground min-h-screen flex flex-col font-sans">
         <script
           type="application/ld+json"

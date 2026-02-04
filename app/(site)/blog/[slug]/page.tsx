@@ -6,6 +6,7 @@ import { ReadingModeTrigger } from '@/components/blog/ReadingModeTrigger';
 import { ReadingProgressBar } from '@/components/blog/ReadingProgressBar';
 import { Comments } from '@/components/blog/Comments';
 import { AISummary } from '@/components/blog/AISummary';
+import { Webmentions } from '@/components/blog/Webmentions';
 import { TableOfContents } from '@/components/mdx/TableOfContents';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -191,6 +192,9 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                   </span>
                 </p>
               </div>
+
+              {/* Webmentions - social interactions from across the web */}
+              <Webmentions slug={post.slug} />
 
               {post.frontmatter.comments !== false && <Comments />}
             </div>
