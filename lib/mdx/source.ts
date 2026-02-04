@@ -124,7 +124,7 @@ export const getPostsBySeries = (seriesTitle: string): Post[] => {
 export const getMostPopularTags = (limit: number = 10): string[] => {
   const posts = getAllPosts();
   const tagCounts: Record<string, number> = {};
-  
+
   posts.forEach((post) => {
     post.frontmatter.tags?.forEach((tag) => {
       tagCounts[tag] = (tagCounts[tag] || 0) + 1;
@@ -135,5 +135,46 @@ export const getMostPopularTags = (limit: number = 10): string[] => {
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([tag]) => tag);
+};
+
+export const getTrendingPosts = (limit: number = 5): Post[] => {
+  const posts = getAllPosts();
+
+  // Score posts based on multiple factors:
+  // - Pinned posts get highest priority
+  // - More recent posts score higher
+  // - Posts updated recently score higher
+  const now = new Date().getTime();
+  const dayInMs = 24 * 60 * 60 * 1000;
+
+  const scoredPosts = posts.map((post) => {
+    let score = 0;
+
+    // Pinned posts get a large boost
+    if (post.frontmatter.pinned) {
+      score += 1000;
+    }
+
+    // Recency score (higher for more recent posts)
+    const publishedDate = new Date(post.frontmatter.publishedAt).getTime();
+    const ageInDays = (now - publishedDate) / dayInMs;
+    score += Math.max(0, 100 - ageInDays); // Max 100 points for very recent
+
+    // Updated recently gets a boost
+    if (post.frontmatter.updatedAt) {
+      const updatedDate = new Date(post.frontmatter.updatedAt).getTime();
+      const updateAgeInDays = (now - updatedDate) / dayInMs;
+      if (updateAgeInDays < 30) {
+        score += 50; // Boost for recently updated
+      }
+    }
+
+    return { post, score };
+  });
+
+  return scoredPosts
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ post }) => post);
 };
 

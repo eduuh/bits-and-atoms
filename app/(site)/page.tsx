@@ -5,6 +5,7 @@ import { FeatureFlag } from '@/components/providers/FeatureFlag';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { siteConfig } from '@/config/site';
 import { PageContainer } from '@/components/layout/PageContainer';
+import { TrendingPosts } from '@/components/blog/TrendingPosts';
 
 export default function Home() {
   const posts = getAllPosts();
@@ -13,10 +14,6 @@ export default function Home() {
   // Limit posts on home page
   const MAX_DISPLAY_POSTS = 5;
   const displayedPosts = posts.slice(0, MAX_DISPLAY_POSTS);
-  
-  // Get pinned posts or fallback to latest 3
-  const pinnedPosts = posts.filter(post => post.frontmatter.pinned);
-  const displayedPinnedPosts = pinnedPosts.length > 0 ? pinnedPosts : posts.slice(0, 3);
 
   return (
     <main className="bg-background" aria-label="Home page">
@@ -108,24 +105,9 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Pinned Content */}
-          <section aria-labelledby="pinned-heading">
-            <h2 id="pinned-heading" className="text-sm font-bold tracking-widest text-muted-foreground uppercase mb-3">
-              {siteConfig.labels.popular}
-            </h2>
-            <ul className="space-y-3" aria-label="Pinned content">
-              {displayedPinnedPosts.map((post) => (
-                <li key={post.slug}>
-                  <Link 
-                    href={`/blog/${post.slug}`}
-                    className="group flex items-start gap-2 hover:text-muted-foreground transition-colors"
-                  >
-                    <ArrowRight className="w-3 h-3 mt-1 shrink-0 text-muted-foreground group-hover:text-foreground" aria-hidden="true" />
-                    <span className="text-sm font-medium leading-snug">{post.frontmatter.title}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          {/* Trending Posts */}
+          <section aria-labelledby="trending-heading">
+            <TrendingPosts limit={5} title={siteConfig.labels.popular} />
           </section>
 
           <FeatureFlag flag="ENABLE_NEWSLETTER">
