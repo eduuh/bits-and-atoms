@@ -83,15 +83,29 @@ interface Post {
   tags?: string[];
   pinned?: boolean;
   content?: string;
+  publishedAt?: string;
+  readingTime?: number;
+  series?: {
+    title: string;
+    order: number;
+  };
 }
 
 interface Tag {
   name: string;
 }
 
+interface YearFilter {
+  year: number;
+}
+
+interface SeriesFilter {
+  name: string;
+}
+
 interface SearchResult {
-  type: 'post' | 'tag';
-  item: Post | Tag;
+  type: 'post' | 'tag' | 'year' | 'series';
+  item: Post | Tag | YearFilter | SeriesFilter;
   matchedContent?: string; // For grep mode - snippet of matched content
 }
 
@@ -103,12 +117,35 @@ export function CommandMenu({ posts }: CommandMenuProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+  const [selectedYear, setSelectedYear] = React.useState<number | null>(null);
+  const [selectedSeries, setSelectedSeries] = React.useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const router = useRouter();
   const { setTheme, theme } = useTheme();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const quickReadList = useQuickReadList();
   const { setIsHelpOpen } = useKeyboardShortcuts();
+
+  // Extract available years and series from posts
+  const availableYears = React.useMemo(() => {
+    const years = new Set<number>();
+    posts.forEach(post => {
+      if (post.publishedAt) {
+        years.add(new Date(post.publishedAt).getFullYear());
+      }
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [posts]);
+
+  const availableSeries = React.useMemo(() => {
+    const series = new Set<string>();
+    posts.forEach(post => {
+      if (post.series?.title) {
+        series.add(post.series.title);
+      }
+    });
+    return Array.from(series).sort();
+  }, [posts]);
 
   // Get pinned posts or fallback to first 5
   const pinnedPosts = React.useMemo(() => {
@@ -151,6 +188,8 @@ export function CommandMenu({ posts }: CommandMenuProps) {
     if (!open) {
       setQuery('');
       setSelectedTags([]);
+      setSelectedYear(null);
+      setSelectedSeries(null);
     }
   }, [open]);
 
@@ -180,11 +219,23 @@ export function CommandMenu({ posts }: CommandMenuProps) {
   }, [posts]);
 
   const filteredPosts = React.useMemo(() => {
-    if (selectedTags.length === 0) return posts;
-    return posts.filter(post => 
-      selectedTags.every(tag => post.tags?.includes(tag))
-    );
-  }, [posts, selectedTags]);
+    return posts.filter(post => {
+      // Tag filter
+      if (selectedTags.length > 0 && !selectedTags.every(tag => post.tags?.includes(tag))) {
+        return false;
+      }
+      // Year filter
+      if (selectedYear && post.publishedAt) {
+        const postYear = new Date(post.publishedAt).getFullYear();
+        if (postYear !== selectedYear) return false;
+      }
+      // Series filter
+      if (selectedSeries && post.series?.title !== selectedSeries) {
+        return false;
+      }
+      return true;
+    });
+  }, [posts, selectedTags, selectedYear, selectedSeries]);
 
   const filteredFuse = React.useMemo(() => {
     return new Fuse(filteredPosts, {
@@ -236,37 +287,63 @@ export function CommandMenu({ posts }: CommandMenuProps) {
 
   const isGrepMode = query.startsWith('>');
   const isTagMode = query.startsWith('#');
+  const isYearMode = query.startsWith('@');
+  const isSeriesMode = query.toLowerCase().startsWith('series:');
 
   const searchResults = React.useMemo((): SearchResult[] => {
     // Mode 1: Tag Autocomplete (#)
     if (isTagMode) {
       const tagQuery = query.slice(1).toLowerCase();
       const availableTags = allTags.filter(t => !selectedTags.includes(t.name));
-      
-      const matchingTags = !tagQuery 
-        ? availableTags 
+
+      const matchingTags = !tagQuery
+        ? availableTags
         : new Fuse(availableTags, { keys: ['name'], threshold: 0.3 }).search(tagQuery).map(r => r.item);
-      
+
       return matchingTags.map(t => ({ type: 'tag', item: t }));
     }
 
-    // Mode 2: Grep mode (>) - full text search in content
+    // Mode 2: Year filter (@YYYY)
+    if (isYearMode) {
+      const yearQuery = query.slice(1);
+      const matchingYears = availableYears.filter(year =>
+        year.toString().startsWith(yearQuery)
+      );
+      return matchingYears.map(year => ({
+        type: 'year' as const,
+        item: { year }
+      }));
+    }
+
+    // Mode 3: Series filter (series:name)
+    if (isSeriesMode) {
+      const seriesQuery = query.slice(7).toLowerCase();
+      const matchingSeries = availableSeries.filter(s =>
+        s.toLowerCase().includes(seriesQuery)
+      );
+      return matchingSeries.map(series => ({
+        type: 'series' as const,
+        item: { name: series }
+      }));
+    }
+
+    // Mode 4: Grep mode (>) - full text search in content
     if (isGrepMode) {
       const grepQuery = query.slice(1).trim();
       if (!grepQuery) return [];
       return grepSearch(grepQuery);
     }
 
-    // Mode 3: Normal search in filtered posts
+    // Mode 5: Normal search in filtered posts
     if (!query) {
-      if (selectedTags.length > 0) {
+      if (selectedTags.length > 0 || selectedYear || selectedSeries) {
         return filteredPosts.map(p => ({ type: 'post', item: p }));
       }
       return [];
     }
 
     return filteredFuse.search(query).map((result) => ({ type: 'post', item: result.item }));
-  }, [query, selectedTags, filteredPosts, filteredFuse, allTags, isGrepMode, isTagMode, grepSearch]);
+  }, [query, selectedTags, selectedYear, selectedSeries, filteredPosts, filteredFuse, allTags, availableYears, availableSeries, isGrepMode, isTagMode, isYearMode, isSeriesMode, grepSearch]);
 
   // Reset selected index when search results change
   React.useEffect(() => {
@@ -296,9 +373,28 @@ export function CommandMenu({ posts }: CommandMenuProps) {
     setQuery('');
   };
 
+  const handleSelectYear = (year: number) => {
+    setSelectedYear(year);
+    setQuery('');
+  };
+
+  const handleSelectSeries = (series: string) => {
+    setSelectedSeries(series);
+    setQuery('');
+  };
+
   const removeTag = (tagToRemove: string) => {
     setSelectedTags(prev => prev.filter(tag => tag !== tagToRemove));
   };
+
+  const clearAllFilters = () => {
+    setSelectedTags([]);
+    setSelectedYear(null);
+    setSelectedSeries(null);
+    setQuery('');
+  };
+
+  const hasActiveFilters = selectedTags.length > 0 || selectedYear !== null || selectedSeries !== null;
 
   const navigate = (href: string) => {
     setOpen(false);
@@ -322,7 +418,7 @@ export function CommandMenu({ posts }: CommandMenuProps) {
     { name: 'RSS', href: '/rss', icon: Rss },
   ];
 
-  const isSearching = query.length > 0 || selectedTags.length > 0;
+  const isSearching = query.length > 0 || hasActiveFilters;
 
   // Portal target for rendering modal at document root
   const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
@@ -374,14 +470,14 @@ export function CommandMenu({ posts }: CommandMenuProps) {
                 <div className="flex items-center gap-2 border-b border-border px-4 py-3">
                   <SearchIcon className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   
-                  {/* Selected Tags */}
+                  {/* Active Filters */}
                   {selectedTags.map(tag => (
-                    <span 
-                      key={tag} 
+                    <span
+                      key={tag}
                       className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
                     >
                       #{tag}
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           removeTag(tag);
@@ -395,9 +491,56 @@ export function CommandMenu({ posts }: CommandMenuProps) {
                     </span>
                   ))}
 
-                  <Command.Input 
+                  {selectedYear && (
+                    <span className="flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-500">
+                      @{selectedYear}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedYear(null);
+                        }}
+                        className="hover:text-blue-400"
+                        aria-label={`Remove ${selectedYear} year filter`}
+                        type="button"
+                      >
+                        <X className="h-3 w-3" aria-hidden="true" />
+                      </button>
+                    </span>
+                  )}
+
+                  {selectedSeries && (
+                    <span className="flex items-center gap-1 rounded-md bg-purple-500/10 px-2 py-1 text-xs font-medium text-purple-500">
+                      series:{selectedSeries}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedSeries(null);
+                        }}
+                        className="hover:text-purple-400"
+                        aria-label={`Remove ${selectedSeries} series filter`}
+                        type="button"
+                      >
+                        <X className="h-3 w-3" aria-hidden="true" />
+                      </button>
+                    </span>
+                  )}
+
+                  {hasActiveFilters && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearAllFilters();
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      type="button"
+                    >
+                      Clear all
+                    </button>
+                  )}
+
+                  <Command.Input
                     ref={inputRef}
-                    placeholder={selectedTags.length > 0 ? "Continue searching..." : "Search posts, # tags, > grep content..."}
+                    placeholder={hasActiveFilters ? "Continue searching..." : "Search posts, # tags, @year, series:name, > grep..."}
                     value={query}
                     onValueChange={setQuery}
                     onKeyDown={(e) => {
@@ -447,6 +590,50 @@ export function CommandMenu({ posts }: CommandMenuProps) {
                         >
                           <Hash className="h-4 w-4 text-muted-foreground group-aria-selected:text-primary" aria-hidden="true" />
                           <span className="group-aria-selected:text-primary group-aria-selected:font-medium transition-colors">{(result.item as Tag).name}</span>
+                        </Command.Item>
+                      ))}
+                    </Command.Group>
+                  )}
+
+                  {/* Year Results */}
+                  {isYearMode && searchResults.length > 0 && (
+                    <Command.Group heading="Filter by Year" className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {searchResults.map((result, index) => (
+                        <Command.Item
+                          key={index}
+                          value={`year-${(result.item as YearFilter).year}`}
+                          onSelect={() => handleSelectYear((result.item as YearFilter).year)}
+                          className="group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm"
+                        >
+                          <Clock className="h-4 w-4 text-muted-foreground group-aria-selected:text-blue-500" aria-hidden="true" />
+                          <span className="group-aria-selected:text-blue-500 group-aria-selected:font-medium transition-colors">
+                            {(result.item as YearFilter).year}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            ({posts.filter(p => p.publishedAt && new Date(p.publishedAt).getFullYear() === (result.item as YearFilter).year).length} posts)
+                          </span>
+                        </Command.Item>
+                      ))}
+                    </Command.Group>
+                  )}
+
+                  {/* Series Results */}
+                  {isSeriesMode && searchResults.length > 0 && (
+                    <Command.Group heading="Filter by Series" className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {searchResults.map((result, index) => (
+                        <Command.Item
+                          key={index}
+                          value={`series-${(result.item as SeriesFilter).name}`}
+                          onSelect={() => handleSelectSeries((result.item as SeriesFilter).name)}
+                          className="group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm"
+                        >
+                          <Network className="h-4 w-4 text-muted-foreground group-aria-selected:text-purple-500" aria-hidden="true" />
+                          <span className="group-aria-selected:text-purple-500 group-aria-selected:font-medium transition-colors">
+                            {(result.item as SeriesFilter).name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            ({posts.filter(p => p.series?.title === (result.item as SeriesFilter).name).length} posts)
+                          </span>
                         </Command.Item>
                       ))}
                     </Command.Group>
@@ -595,6 +782,14 @@ export function CommandMenu({ posts }: CommandMenuProps) {
                     <span className="flex items-center gap-1.5">
                       <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">#</kbd>
                       <span>Tags</span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">@</kbd>
+                      <span>Year</span>
+                    </span>
+                    <span className="flex items-center gap-1.5 hidden sm:flex">
+                      <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">series:</kbd>
+                      <span>Series</span>
                     </span>
                     <span className="flex items-center gap-1.5">
                       <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">&gt;</kbd>

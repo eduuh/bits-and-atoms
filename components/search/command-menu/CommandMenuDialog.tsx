@@ -47,7 +47,7 @@ export function CommandMenuDialog({
 
           {/* Command Dialog - Positioned at top like VS Code, lower on mobile to avoid browser chrome */}
           <motion.div
-            className="fixed left-1/2 top-[20%] sm:top-[12%] w-full max-w-[640px] -translate-x-1/2 px-3 sm:px-4"
+            className="fixed inset-x-0 top-[20%] sm:top-[12%] mx-auto w-[calc(100%-24px)] sm:w-[calc(100%-32px)] max-w-[640px]"
             style={{ zIndex: 100000 }}
             role="dialog"
             aria-modal="true"
