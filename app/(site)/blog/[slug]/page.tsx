@@ -4,7 +4,6 @@ import { ReadingMode } from '@/components/blog/ReadingMode';
 import { ReadingModeProvider } from '@/components/blog/ReadingModeContext';
 import { ReadingModeTrigger } from '@/components/blog/ReadingModeTrigger';
 import { ReadingProgressBar } from '@/components/blog/ReadingProgressBar';
-import { Comments } from '@/components/blog/Comments';
 import { AISummary } from '@/components/blog/AISummary';
 import { Webmentions } from '@/components/blog/Webmentions';
 import { Changelog } from '@/components/blog/Changelog';
@@ -225,7 +224,6 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                 </p>
               </div>
 
-              {post.frontmatter.comments !== false && <Comments />}
             </div>
             
             <aside className="hidden lg:block">

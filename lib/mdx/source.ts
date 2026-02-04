@@ -22,7 +22,6 @@ export interface PostFrontmatter {
   published?: boolean;
   status?: 'published' | 'draft';
   pinned?: boolean;
-  comments?: boolean;
   series?: {
     title: string;
     order: number;
