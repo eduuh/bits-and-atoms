@@ -8,6 +8,7 @@ import { Comments } from '@/components/blog/Comments';
 import { AISummary } from '@/components/blog/AISummary';
 import { Webmentions } from '@/components/blog/Webmentions';
 import { TableOfContents } from '@/components/mdx/TableOfContents';
+import { TextToSpeech } from '@/components/blog/TextToSpeech';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -173,6 +174,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_200px] gap-8">
             <div className="prose prose-neutral dark:prose-invert max-w-prose prose-headings:scroll-mt-20 prose-a:text-primary prose-a:underline hover:prose-a:text-muted-foreground transition-colors">
+<<<<<<< HEAD
               {/* AI Summary - shown if available */}
               {post.frontmatter.aiSummary && (
                 <AISummary
@@ -180,6 +182,10 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                   keyTakeaways={post.frontmatter.aiKeyTakeaways}
                 />
               )}
+=======
+              {/* Text-to-Speech Player */}
+              <TextToSpeech content={post.content} title={post.frontmatter.title} />
+>>>>>>> 8f99a8e (Add text-to-speech feature for blog posts)
               <ReadingMode title={post.frontmatter.title} summary={post.frontmatter.summary}>
                 <MDXContent source={post.content} />
               </ReadingMode>
