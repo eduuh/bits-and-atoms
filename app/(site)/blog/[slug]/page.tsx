@@ -10,6 +10,7 @@ import { Webmentions } from '@/components/blog/Webmentions';
 import { Changelog } from '@/components/blog/Changelog';
 import { TableOfContents } from '@/components/mdx/TableOfContents';
 import { TextToSpeech } from '@/components/blog/TextToSpeech';
+import { PrintButton } from '@/components/blog/PrintButton';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -166,6 +167,8 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                   </div>
                   <span>•</span>
                   <ReadingModeTrigger />
+                  <span className="no-print">•</span>
+                  <PrintButton variant="button" className="no-print" />
                 </div>
               </div>
             </div>
@@ -213,6 +216,14 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 
               {/* Webmentions - social interactions from across the web */}
               <Webmentions slug={post.slug} />
+
+              {/* Print-only footer with source URL */}
+              <div className="hidden print:block print-footer not-prose">
+                <p>
+                  Originally published at:{' '}
+                  <strong>{siteConfig.url}/blog/{post.slug}</strong>
+                </p>
+              </div>
 
               {post.frontmatter.comments !== false && <Comments />}
             </div>
