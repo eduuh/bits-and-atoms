@@ -1,6 +1,6 @@
 import { getPostsBySeries, getAllSeries } from '@/lib/mdx/source';
 import { MDXContent } from '@/components/mdx/MDXContent';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getTagGradient } from '@/lib/utils';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Metadata } from 'next';
@@ -50,14 +50,14 @@ export default async function SeriesWorkshopPage({ params }: Props) {
   }
 
   const totalReadingTime = posts.reduce((acc, post) => acc + (post.readingTime || 0), 0);
-  const heroImage = posts[0]?.frontmatter.image || '/images/blog-hero.jpg';
+  const heroImage = posts[0]?.frontmatter.image;
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Series',
     headline: seriesTitle,
     description: `A comprehensive workshop on ${seriesTitle}.`,
-    image: [heroImage],
+    ...(heroImage ? { image: [heroImage] } : {}),
     author: {
       '@type': 'Person',
       name: siteConfig.name,
@@ -75,17 +75,35 @@ export default async function SeriesWorkshopPage({ params }: Props) {
         <PageContainer className="py-8">
           {/* Hero Section */}
           <div className="relative w-full h-[30vh] min-h-[250px] flex flex-col justify-end pb-8 mb-8 rounded-xl overflow-hidden">
-            {/* Background Image */}
+            {/* Background Image or Gradient Placeholder */}
             <div className="absolute inset-0 z-0">
-              <Image
-                src={heroImage}
-                alt={seriesTitle}
-                fill
-                className="object-cover"
-                priority
-              />
-              <div className="absolute inset-0 bg-background/30" />
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+              {heroImage ? (
+                <>
+                  <Image
+                    src={heroImage}
+                    alt={seriesTitle}
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-background/30" />
+                </>
+              ) : (
+                <>
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: getTagGradient(posts[0]?.frontmatter.tags) }}
+                  />
+                  <div
+                    className="absolute inset-0 opacity-10"
+                    style={{
+                      backgroundImage: 'radial-gradient(circle at 25px 25px, currentColor 2%, transparent 0%), radial-gradient(circle at 75px 75px, currentColor 2%, transparent 0%)',
+                      backgroundSize: '100px 100px',
+                    }}
+                  />
+                </>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
             </div>
 
             <div className="relative z-10 px-6 w-full">

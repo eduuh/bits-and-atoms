@@ -15,7 +15,7 @@ import { PrintButton } from '@/components/blog/PrintButton';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getTagGradient } from '@/lib/utils';
 import { Metadata } from 'next';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { siteConfig } from '@/config/site';
@@ -104,18 +104,35 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
         />
         
         <div className="relative w-full h-[35vh] min-h-[300px] flex flex-col justify-end pb-8 overflow-hidden">
-            {/* Background Image */}
+            {/* Background Image or Gradient Placeholder */}
             <div className="absolute inset-0 z-0">
-              <Image
-                src={post.frontmatter.image || '/images/blog-hero.jpg'}
-                alt={post.frontmatter.title}
-                fill
-                className="object-cover"
-                priority
-              />
-              {/* Overlay to ensure text contrast in both modes */}
-              <div className="absolute inset-0 bg-background/30" />
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+              {post.frontmatter.image ? (
+                <>
+                  <Image
+                    src={post.frontmatter.image}
+                    alt={post.frontmatter.title}
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-background/30" />
+                </>
+              ) : (
+                <>
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: getTagGradient(post.frontmatter.tags) }}
+                  />
+                  <div
+                    className="absolute inset-0 opacity-10"
+                    style={{
+                      backgroundImage: 'radial-gradient(circle at 25px 25px, currentColor 2%, transparent 0%), radial-gradient(circle at 75px 75px, currentColor 2%, transparent 0%)',
+                      backgroundSize: '100px 100px',
+                    }}
+                  />
+                </>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
             </div>
 
             <div className="relative z-10 w-full max-w-5xl mx-auto px-6">
