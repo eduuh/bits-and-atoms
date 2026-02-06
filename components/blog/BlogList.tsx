@@ -6,6 +6,7 @@ import { Post } from '@/lib/mdx/source';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { staggerContainer, staggerItem } from '@/lib/animations';
+import { UpdatedBadge } from '@/components/blog/UpdatedBadge';
 
 interface BlogListProps {
   posts: Post[];
@@ -77,11 +78,18 @@ export function BlogList({ posts, isDev }: BlogListProps) {
                     {post.frontmatter.title}
                   </Link>
                 </h2>
-                {post.frontmatter.published === false && (
-                  <span className="relative z-10 inline-flex items-center rounded-full border border-yellow-500/50 bg-yellow-500/10 px-2 py-0.5 text-xs font-medium text-yellow-500">
-                    Draft
-                  </span>
-                )}
+                <div className="relative z-10 flex items-center gap-2">
+                  <UpdatedBadge
+                    publishedAt={post.frontmatter.publishedAt}
+                    updatedAt={post.frontmatter.updatedAt}
+                    variant="compact"
+                  />
+                  {post.frontmatter.published === false && (
+                    <span className="inline-flex items-center rounded-full border border-yellow-500/50 bg-yellow-500/10 px-2 py-0.5 text-xs font-medium text-yellow-500">
+                      Draft
+                    </span>
+                  )}
+                </div>
               </div>
               <p className="mb-4 text-base text-muted-foreground leading-relaxed line-clamp-2">
                 {post.frontmatter.summary}

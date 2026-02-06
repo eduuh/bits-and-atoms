@@ -8,6 +8,7 @@ import { AISummary } from '@/components/blog/AISummary';
 import { Webmentions } from '@/components/blog/Webmentions';
 import { Changelog } from '@/components/blog/Changelog';
 import { TLDRSection } from '@/components/blog/TLDRSection';
+import { UpdatedBadge } from '@/components/blog/UpdatedBadge';
 import { TableOfContents } from '@/components/mdx/TableOfContents';
 import { TextToSpeech } from '@/components/blog/TextToSpeech';
 import { PrintButton } from '@/components/blog/PrintButton';
@@ -169,6 +170,10 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                   <ReadingModeTrigger />
                   <span className="no-print">•</span>
                   <PrintButton variant="button" className="no-print" />
+                  <UpdatedBadge
+                    publishedAt={post.frontmatter.publishedAt}
+                    updatedAt={post.frontmatter.updatedAt}
+                  />
                 </div>
               </div>
             </div>
