@@ -7,6 +7,7 @@ import { ReadingProgressBar } from '@/components/blog/ReadingProgressBar';
 import { AISummary } from '@/components/blog/AISummary';
 import { Webmentions } from '@/components/blog/Webmentions';
 import { Changelog } from '@/components/blog/Changelog';
+import { TLDRSection } from '@/components/blog/TLDRSection';
 import { TableOfContents } from '@/components/mdx/TableOfContents';
 import { TextToSpeech } from '@/components/blog/TextToSpeech';
 import { PrintButton } from '@/components/blog/PrintButton';
@@ -186,6 +187,10 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                   keyTakeaways={post.frontmatter.aiKeyTakeaways}
                 />
               )}
+              <TLDRSection
+                tldr={post.frontmatter.tldr}
+                keyTakeaways={post.frontmatter.keyTakeaways}
+              />
               <ReadingMode title={post.frontmatter.title} summary={post.frontmatter.summary}>
                 <MDXContent source={post.content} />
               </ReadingMode>

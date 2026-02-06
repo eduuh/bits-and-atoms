@@ -22,6 +22,8 @@ export interface PostFrontmatter {
   published?: boolean;
   status?: 'published' | 'draft';
   pinned?: boolean;
+  tldr?: string;
+  keyTakeaways?: string[];
   series?: {
     title: string;
     order: number;
