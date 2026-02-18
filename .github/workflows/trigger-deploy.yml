@@ -12,5 +12,5 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.TRACKER_DISPATCH_TOKEN }}
-          repository: eduuh/tracker
+          repository: eduuh/wira360
           event-type: blog-content-updated
