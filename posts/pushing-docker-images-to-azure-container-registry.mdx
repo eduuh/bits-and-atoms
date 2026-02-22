@@ -1,0 +1,137 @@
+---
+title: Pushing Docker Images to Azure Container Registry with GitHub Actions
+published: true
+slug: pushing-docker-images-to-azure-container-registry
+publishedAt: '2026-02-22'
+summary: >-
+  Set up a GitHub Actions workflow to build and push Docker images to ACR.
+  Spoiler: the OIDC token approach doesn't work with buildx. Here's what does.
+image: /images/home-hero.jpg
+tags:
+  - Azure
+  - Docker
+  - GitHub Actions
+  - DevOps
+---
+
+I needed to build 4 Docker images from a monorepo and push them to Azure Container Registry on every push to main. Sounds simple. It wasn't.
+
+## What I Was Going For
+
+Four services, four images, all pushed to `wira360.azurecr.io` automatically. Tags with the git SHA for traceability, plus `latest` for convenience. No stored secrets — OIDC for auth.
+
+## The Workflow (Final Version)
+
+```yaml
+name: Build and Push to ACR
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-push:
+    name: ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: sokoni-api
+            dockerfile: products/sokoni/api/Dockerfile
+          - service: sokoni-web
+            dockerfile: products/sokoni/web/Dockerfile
+          - service: payments-api
+            dockerfile: services/payments/api/Dockerfile
+          - service: admin-web
+            dockerfile: platform/admin/web/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: wira360.azurecr.io
+          username: \${{ secrets.ACR_USERNAME }}
+          password: \${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: \${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            wira360.azurecr.io/\${{ matrix.service }}:\${{ github.sha }}
+            wira360.azurecr.io/\${{ matrix.service }}:latest
+          cache-from: type=registry,ref=wira360.azurecr.io/\${{ matrix.service }}:cache
+          cache-to: type=registry,ref=wira360.azurecr.io/\${{ matrix.service }}:cache,mode=max
+```
+
+`fail-fast: false` means a slow build in one job won't cancel the others. The registry cache means repeat builds only transfer changed layers.
+
+## One-Time Azure Setup
+
+Before this can run you need an ACR. I already had one at `wira360.azurecr.io`. Enable admin credentials:
+
+```bash
+az acr update --name wira360 --admin-enabled true
+az acr credential show --name wira360
+```
+
+That gives you a username and password. Store them as GitHub secrets:
+
+- `ACR_USERNAME`
+- `ACR_PASSWORD`
+
+## The OIDC Rabbit Hole
+
+I originally wanted keyless auth — no stored secrets, just OIDC. The setup looks clean: create an app registration, add a federated credential pointing at your repo, grant it `AcrPush`, and use `azure/login@v2` in the workflow.
+
+```bash
+az ad app create --display-name "github-tracker-acr"
+az ad sp create --id <appId>
+
+az ad app federated-credential create \
+  --id <appId> \
+  --parameters '{
+    "name": "github-tracker-main",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:eduuh/wira360:ref:refs/heads/main",
+    "audiences": ["api://AzureADTokenExchange"]
+  }'
+
+ACR_ID=$(az acr show --name wira360 --query id -o tsv)
+az role assignment create --assignee <appId> --role AcrPush --scope $ACR_ID
+```
+
+<Callout type="warning" title="Audience gotcha">
+  The audience must be `api://AzureADTokenExchange`. If you use `api://AzureADTokenEndpoint` (which looks plausible), OIDC silently fails with `AADSTS700212`.
+</Callout>
+
+OIDC login worked. But the Docker push kept failing with `insufficient_scope: authorization failed`.
+
+The problem: after `azure/login@v2` authenticates you, the next step is getting Docker credentials for the registry. The obvious approach is `az acr login --name wira360`, which writes credentials to the default Docker context. Except buildx runs in its own container driver and doesn't inherit those credentials.
+
+So you try `az acr login --expose-token`, get a short-lived access token, and pass it to `docker login`. Closer, but still fails. The reason: buildx's OAuth challenge flow with ACR expects either basic auth credentials or a refresh token. A bare access token doesn't satisfy the challenge, so ACR returns `insufficient_scope`.
+
+There are ways to make OIDC work with buildx (passing the token through buildx secrets, using a different driver), but they add complexity for marginal benefit. Admin credentials stored as GitHub secrets are static, they work, and that's enough.
+
+## Verifying It Worked
+
+```bash
+az acr repository list --name wira360
+az acr repository show-tags --name wira360 --repository sokoni-api
+```
+
+You should see your git SHAs listed as tags.
+
+---
+
+*OIDC is elegant in theory. Admin credentials are boring and they work.*
