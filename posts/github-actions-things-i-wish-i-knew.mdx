@@ -1,0 +1,134 @@
+---
+title: GitHub Actions Things I Wish I Knew Earlier
+published: true
+slug: github-actions-things-i-wish-i-knew
+publishedAt: '2026-02-22'
+summary: >-
+  Matrix strategies, OIDC auth, registry caching, and a few footguns I hit
+  setting up CI/CD for a monorepo.
+image: /images/home-hero.jpg
+tags:
+  - GitHub Actions
+  - DevOps
+  - CI/CD
+---
+
+I've been setting up CI/CD for a monorepo recently and hit enough non-obvious things that it's worth writing down. These aren't basics — assume you've already written a workflow or two.
+
+## Matrix Strategy with `include`
+
+When you have multiple services to build, the naive approach is one job per service. The better approach is a matrix:
+
+```yaml
+strategy:
+  fail-fast: false
+  matrix:
+    include:
+      - service: sokoni-api
+        dockerfile: products/sokoni/api/Dockerfile
+      - service: payments-api
+        dockerfile: services/payments/api/Dockerfile
+```
+
+Each entry in `include` is a set of variables available throughout the job as `${{ matrix.service }}`, `${{ matrix.dockerfile }}`, etc. Four services means four parallel jobs, all from one job definition.
+
+**`fail-fast: false` matters.** The default is `true`, which means if one job fails, GitHub cancels the others. For builds, you usually want to see all failures at once, not just the first one.
+
+## OIDC — When It Works and When It Doesn't
+
+OIDC lets GitHub Actions authenticate to cloud providers without storing long-lived secrets. For AWS and GCP it's pretty seamless. For Azure it mostly works but has a sharp edge.
+
+The setup: create an app registration, add a federated credential for your repo, grant the necessary role. The federated credential's audience **must** be `api://AzureADTokenExchange`. Not `api://AzureADTokenEndpoint`, which looks like it could be right but isn't — Azure will return `AADSTS700212` and the error message won't tell you why.
+
+```yaml
+permissions:
+  id-token: write   # required for OIDC token exchange
+  contents: read
+```
+
+The `permissions` block is required at the workflow or job level. Without `id-token: write`, the OIDC token request fails silently.
+
+## The buildx Credentials Problem
+
+If you're using `docker/build-push-action`, you're using buildx. Buildx runs in its own container driver — it doesn't inherit Docker credentials from the runner's default context.
+
+This means:
+
+```yaml
+# This does NOT work with buildx
+- run: az acr login --name myregistry
+```
+
+And even this fails:
+
+```yaml
+# Also doesn't work — ACR's OAuth flow rejects bare access tokens
+- run: |
+    TOKEN=$(az acr login --name myregistry --expose-token --output tsv --query accessToken)
+    docker login myregistry.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password "$TOKEN"
+```
+
+What works is `docker/login-action@v3` with credentials that survive the OAuth challenge — either basic auth (username/password) or a proper refresh token. For ACR, that means enabling admin credentials:
+
+```yaml
+- uses: docker/login-action@v3
+  with:
+    registry: myregistry.azurecr.io
+    username: ${{ secrets.ACR_USERNAME }}
+    password: ${{ secrets.ACR_PASSWORD }}
+```
+
+## Registry Cache for Faster Builds
+
+Without caching, every run rebuilds from scratch. With registry cache, unchanged layers are pulled from the registry instead:
+
+```yaml
+- uses: docker/build-push-action@v6
+  with:
+    cache-from: type=registry,ref=myregistry.azurecr.io/myservice:cache
+    cache-to: type=registry,ref=myregistry.azurecr.io/myservice:cache,mode=max
+```
+
+`mode=max` caches all layers, including intermediate ones. The first run is the same speed. Every run after is faster — how much faster depends on how much of your Dockerfile changes.
+
+The `:cache` tag is just a convention. It'll be created on the first push.
+
+## Tag with SHA, Not Branch Name
+
+```yaml
+tags: |
+  myregistry.azurecr.io/myservice:${{ github.sha }}
+  myregistry.azurecr.io/myservice:latest
+```
+
+Branch name tags (`main`, `latest` only) make it impossible to roll back to a specific build. The SHA tag gives you a direct link between what's running and the exact commit that built it. You can always trace back from the registry to the source.
+
+## `workflow_dispatch` for Manual Triggers
+
+```yaml
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+```
+
+`workflow_dispatch` adds a "Run workflow" button in the Actions tab. Useful for re-running a build after fixing infrastructure (like a broken ACR credential) without pushing a dummy commit.
+
+## Checking What Broke
+
+```bash
+# List recent runs for a specific workflow
+gh run list --repo org/repo --workflow build.yml --limit 5
+
+# See failed step logs
+gh run view <run-id> --log-failed
+
+# Re-run a failed workflow
+gh workflow run build.yml --repo org/repo --ref main
+```
+
+The `gh` CLI is much faster than clicking through the UI when you're iterating on a broken workflow.
+
+---
+
+*Most of this I learned by breaking things. The buildx credentials issue cost me an afternoon.*
