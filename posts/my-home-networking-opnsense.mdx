@@ -1,0 +1,30 @@
+---
+title: My Home Networking - Opnsense
+slug: my-home-networking-opnsense
+publishedAt: '2026-03-01'
+summary: >-
+  Why I chose OPNsense as my router and how it serves as the backbone of my home
+  network.
+tags:
+  - Infrastructure
+published: false
+series:
+  title: Home Lab
+  order: 1
+---
+
+The router provided by your ISP is usually garbage. It lacks features, security updates, and performance. That's why I switched to OPNsense.
+
+## Why OPNsense?
+
+OPNsense is an open-source, FreeBSD-based firewall and routing platform. It's a fork of pfSense but with a cleaner UI and a more open development model.
+
+## Hardware
+
+I'm running OPNsense on a dedicated mini-PC with dual 2.5GbE NICs. This ensures it can handle my full internet bandwidth with Intrusion Detection/Prevention (IDS/IPS) enabled.
+
+## Key Features I Use
+
+- **VLANs:** Segregating IoT devices from my main network.
+- **VPN:** WireGuard for secure remote access to my home network.
+- **Traffic Shaping:** Ensuring gaming and video calls get priority over downloads.

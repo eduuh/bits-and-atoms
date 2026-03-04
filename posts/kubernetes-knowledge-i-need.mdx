@@ -1,0 +1,32 @@
+---
+title: The Only Kubernetes Knowledge I Need
+slug: kubernetes-knowledge-i-need
+publishedAt: '2026-03-03'
+summary: >-
+  Kubernetes is complex, but for a home lab, you only need a subset of concepts.
+  Here is my pragmatic guide.
+tags:
+  - Infrastructure
+published: false
+series:
+  title: Home Lab
+  order: 3
+---
+
+Kubernetes (K8s) has a reputation for being over-engineered for small setups. But once you get past the learning curve, the declarative nature of it is unbeatable.
+
+## K3s: The Lightweight Distro
+
+I use K3s, a lightweight Kubernetes distribution built for IoT and Edge computing. It's perfect for a home lab.
+
+## The Core Concepts
+
+I don't need to be a K8s expert. I just focus on:
+- **Deployments:** Keeping my apps running.
+- **Services:** Exposing apps internally.
+- **Ingress:** Exposing apps to the web (via Traefik or Nginx).
+- **PVCs:** Persistent Volume Claims for storage.
+
+## GitOps with ArgoCD
+
+The real magic happens with GitOps. I commit my K8s manifests to a Git repo, and ArgoCD automatically syncs the state of my cluster. If I break something, I just revert the commit.

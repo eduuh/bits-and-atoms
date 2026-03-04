@@ -1,0 +1,47 @@
+---
+title: My Programmable Keyboard
+slug: my-programmable-keyboard
+publishedAt: '2026-05-13'
+summary: >-
+  Why I use a keyboard running QMK firmware and how it has changed the way I
+  interact with computers.
+tags:
+  - Keyboards
+  - Lifestyle
+published: false
+pinned: true
+series:
+  title: My Keyboard Journey
+  order: 9
+---
+
+Most people use the keyboard that came with their computer. Some buy a "mechanical" keyboard for the clicky noise. I use a programmable keyboard because I want to control the tool, not let the tool control me.
+
+## The Hardware
+
+I currently drive a custom split keyboard running on an RP2040 microcontroller.
+- **Split Design:** Keeps my shoulders open and improves posture.
+- **Ortholinear Layout:** Keys are arranged in a grid, not staggered like a typewriter from 1870.
+- **QMK Firmware:** The brain of the operation.
+
+## Why Programmable?
+
+A standard keyboard sends a scancode to the OS, and the OS decides what letter to print. A programmable keyboard decides what to send before it even leaves the board.
+
+### Layers
+I don't have a number pad. I don't have function keys. I don't even have arrow keys on the base layer.
+Instead, I have layers.
+- **Layer 0:** Alphas (Colemak Mod-DH)
+- **Layer 1:** Navigation (Vim-style arrows, Home, End)
+- **Layer 2:** Numbers and Symbols
+- **Layer 3:** Media and System Control
+
+### Macros
+I have single keys that:
+- Type my email address.
+- Lock my screen and turn off the monitors.
+- Git commit and push.
+
+## The Result
+
+My hands barely move. Everything I need is within one unit of the home row. It's not just about speed; it's about comfort and cognitive load. Once you go programmable, you can't go back to a "dumb" slab of plastic.

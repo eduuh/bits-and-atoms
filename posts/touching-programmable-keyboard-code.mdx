@@ -1,0 +1,29 @@
+---
+title: Touching Programmable Keyboard Code
+slug: touching-programmable-keyboard-code
+publishedAt: '2026-01-02'
+summary: >-
+  Getting my hands dirty with firmware code and understanding how keyboards work
+  under the hood.
+tags:
+  - Engineering
+  - Keyboards
+published: false
+series:
+  title: My Keyboard Journey
+  order: 4
+---
+
+Buying a programmable keyboard is one thing; programming it is another. Most come with GUIs like VIA or Vial, which are fantastic. But I wanted more control.
+
+## Beyond the GUI
+
+GUIs are great for quick changes, but they hide the complexity. I wanted to understand how the matrix scanning worked, how keycodes were processed, and how to implement custom logic.
+
+## The Matrix
+
+Understanding the row-column matrix was my first "aha" moment. It demystified how the microcontroller knows which key is pressed.
+
+## Custom Logic
+
+I started writing small snippets of C code to handle specific behaviors that the GUI couldn't support, like dynamic macros or complex state management.

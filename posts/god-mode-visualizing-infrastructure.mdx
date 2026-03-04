@@ -1,0 +1,33 @@
+---
+title: 'God Mode: Visualizing My Entire Home Infrastructure'
+slug: god-mode-visualizing-infrastructure
+publishedAt: '2026-05-01'
+summary: >-
+  How I use Grafana and Prometheus to monitor everything from server temps to
+  power consumption in real-time.
+tags:
+  - Infrastructure
+published: false
+series:
+  title: Home Lab
+  order: 6
+---
+
+If you can't measure it, you can't manage it. In my home lab, I take this to the extreme.
+
+## The Stack
+
+- **Prometheus:** The time-series database that scrapes metrics from my targets.
+- **Grafana:** The beautiful visualization layer.
+- **Node Exporter:** Running on every Linux box to report system stats.
+
+## What I Monitor
+
+1.  **Server Health:** CPU, RAM, Disk usage across my Proxmox cluster.
+2.  **Network Traffic:** Real-time bandwidth usage from OPNsense.
+3.  **Power:** Energy consumption from my smart plugs and backup inverter.
+4.  **Environment:** Temperature and humidity in the server closet.
+
+## The "God Mode" Dashboard
+
+I built a single "God Mode" dashboard that gives me a red/green status for every service I run. It's the first thing I check in the morning.

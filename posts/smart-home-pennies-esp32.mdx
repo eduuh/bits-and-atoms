@@ -1,0 +1,30 @@
+---
+title: Building a Smart Home for Pennies with ESP32s
+slug: smart-home-pennies-esp32
+publishedAt: '2026-05-02'
+summary: >-
+  Why buy expensive proprietary sensors when you can build better ones for $5
+  using ESPHome?
+tags:
+  - Smart Home
+published: false
+series:
+  title: Home Infrastructure
+  order: 5
+---
+
+Commercial smart home sensors are often overpriced, cloud-dependent, and limited in functionality. Enter the ESP32.
+
+## What is ESPHome?
+
+ESPHome is a system to control your ESP8266/ESP32 by simple configuration files. No C++ coding required (unless you want to).
+
+## My Custom Sensors
+
+1.  **The "Everything" Sensor:** A small box with temperature, humidity, lux (light), and presence detection (mmWave). Total cost: ~$15.
+2.  **Bed Presence:** Pressure mats under the mattress to know if I'm in bed (automating lights and night mode).
+3.  **Energy Monitoring:** CT clamps on my main breaker panel to track whole-home usage.
+
+## Reliability
+
+Because they communicate over local WiFi (or even Ethernet) and integrate directly with Home Assistant, they are faster and more reliable than most Zigbee/Z-Wave alternatives.
