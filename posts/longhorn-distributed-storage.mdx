@@ -1,0 +1,222 @@
+---
+title: Longhorn — Distributed Storage for My Homelab
+slug: longhorn-distributed-storage
+publishedAt: '2026-02-22'
+summary: How I use Longhorn for distributed block storage across my Kubernetes homelab — replication, disk tags, GitOps management, and what happens when a node disappears for nine days.
+tags:
+  - Kubernetes
+  - Storage
+  - Self-Hosted
+published: true
+series:
+  title: Home Lab
+  order: 3
+---
+
+Storage is the hardest part of running a Kubernetes homelab. Stateless apps are easy — they crash, they restart, they reschedule. But databases, media libraries, and config files need somewhere persistent to live. And that somewhere needs to survive node failures, reboots, and the general chaos of running hardware in your living room.
+
+I use [Longhorn](https://longhorn.io/) for this. Here's everything I've learned after running it in production for several months — including the time a node went offline for nine days and I had to recover.
+
+## What is Longhorn?
+
+Longhorn is a cloud-native distributed block storage system for Kubernetes, originally built by Rancher. It's now a CNCF incubating project.
+
+At its core, Longhorn takes local disks on your Kubernetes nodes and turns them into replicated block devices that your pods can consume as standard PVCs. You get:
+
+- **Replication** across nodes — configurable per volume
+- **Snapshots** and incremental backups
+- **Thin provisioning** — volumes only consume space they actually use
+- **A web UI** for managing volumes, replicas, and backups
+- **CSI-compliant** — works with standard Kubernetes storage primitives
+
+No special hardware, no SAN, no NFS. Just the disks already attached to your nodes.
+
+## My Setup
+
+I run three nodes, each contributing storage to the cluster:
+
+| Node | Role | Disk | Tags |
+|------|------|------|------|
+| `intel-c-firewall` | Control plane | NVMe (system disk) | `nvme`, `fast` |
+| `amd-w-minipc` | Worker | NVMe (system disk) | `nvme`, `fast` |
+| `intel-w-acemagic` | Worker | NVMe (system disk) | `nvme`, `fast` |
+
+Longhorn runs a manager pod on each node, which handles scheduling replicas, monitoring disk health, and coordinating volume attachments.
+
+## GitOps Configuration
+
+Everything is managed declaratively via Flux. My Longhorn node configs live in `cluster/storage/` as `Node` custom resources:
+
+```yaml
+# cluster/storage/node-amd-w-minipc.yaml
+apiVersion: longhorn.io/v1beta2
+kind: Node
+metadata:
+  name: amd-w-minipc
+  namespace: longhorn-system
+spec:
+  allowScheduling: true
+  disks:
+    default-disk-nvme:
+      allowScheduling: true
+      diskType: filesystem
+      evictionRequested: false
+      path: /var/lib/longhorn
+      storageReserved: 107374182400  # 100GB reserved
+      tags:
+        - nvme
+        - fast
+```
+
+This is declarative infrastructure — Flux applies it, Longhorn enforces it. If someone manually tweaks a disk config in the UI, the next sync reverts it. Intentional, but worth knowing if you're debugging and wondering why your changes aren't sticking.
+
+## Disk Tags
+
+One of Longhorn's best features is **disk tags**, which let you target specific storage tiers for your volumes. I use:
+
+| Tag | Meaning |
+|-----|---------|
+| `nvme` | System NVMe disk |
+| `fast` | Same as `nvme` — for low-latency workloads |
+| `hdd` | Spinning disk |
+| `bulk` | Slow, high-capacity storage |
+
+Then in your StorageClass, you specify which tags a volume's replicas must land on:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-fast
+parameters:
+  numberOfReplicas: "2"
+  diskSelector: "fast"
+```
+
+Postgres databases go on fast NVMe disks. Large media archives go on cheaper spinning disks. You get this automatically just by choosing the right StorageClass at deploy time.
+
+## How Replication Works
+
+When a pod writes to a Longhorn volume:
+
+1. The volume is attached to one node (the "frontend")
+2. Longhorn's engine process handles all I/O on that node
+3. Writes are replicated synchronously to replica processes on other nodes
+4. Each replica is a full, independent copy of the volume data
+
+The default replication factor is 3 for critical data, 2 for less critical. You can set this per StorageClass or override per volume in the UI.
+
+If a node goes down, volumes with surviving replicas stay healthy and keep serving. Volumes where the *only* replica was on the dead node become **faulted** — detached, inaccessible, waiting for that node to come back.
+
+This is where things get interesting.
+
+## When a Node Disappears
+
+One of my worker nodes (`intel-w-acemagic`) went offline unexpectedly. The kubelet stopped posting status, Kubernetes marked it `NotReady`, and within minutes the damage was visible:
+
+- **12 volumes degraded** — lost one replica, still serving from the surviving copy
+- **5 volumes faulted** — only replica was on the dead node, completely inaccessible
+- **20+ pods stuck Terminating** — waiting for the node to acknowledge their deletion
+- **Several pods in ContainerCreating** — trying to attach volumes that couldn't attach
+
+The degraded volumes kept running. Redundancy doing its job. The faulted volumes were the problem — pods depending on them sat in `ContainerCreating` indefinitely.
+
+```
+NAME               STATE      ROBUSTNESS   NODE
+pvc-1a589bb4-...   detached   faulted                    ← inaccessible
+pvc-365487d4-...   attached   degraded     amd-w-minipc  ← serving, but exposed
+pvc-55510f17-...   attached   healthy      amd-w-minipc  ← fully replicated
+```
+
+The node had been offline for **nine days** by the time I noticed. Running without redundancy on half my volumes for nine days, and I didn't know.
+
+Once the node came back online, Longhorn recovered automatically:
+
+1. Faulted volumes moved from `faulted` → `unknown` → rebuilding
+2. Missing replicas rebuilt in the background
+3. Stuck pods came up once volumes were available again
+
+The data was intact. Nothing lost. That's the value of replication — even with a single surviving replica on a different node, your data is safe.
+
+## Lessons from the Outage
+
+**Single-replica volumes are a trap.** I had five volumes with only one copy of their data. Any workload that matters should have at least two replicas. One replica means one hardware failure = data inaccessible.
+
+**Watch for degraded volumes.** The real risk isn't a volume going faulted — it's a degraded volume (one replica surviving) surviving long enough for the *second* node to have trouble. Set up Prometheus alerts for degraded volumes. Don't wait nine days to find out.
+
+**Terminating pods block volume reattachment.** When a node dies, its pods get stuck `Terminating`. For StatefulSets with Longhorn volumes, the old pod needs to be fully gone before Longhorn can safely attach elsewhere. Force-deleting (`--force --grace-period=0`) works, but understand what you're doing.
+
+## Removing a Disk Safely
+
+When I physically removed an extra SSD from `intel-w-acemagic`, Longhorn's admission webhook blocked the config change:
+
+```
+admission webhook "validator.longhorn.io" denied the request:
+Delete Disk on node default-disk-nvme error:
+Please disable the disk and remove all replicas first
+```
+
+The correct sequence:
+
+```bash
+# 1. Disable scheduling and request eviction
+kubectl patch node.longhorn.io intel-w-acemagic -n longhorn-system \
+  --type=merge \
+  -p '{"spec":{"disks":{"old-disk":{"allowScheduling":false,"evictionRequested":true}}}}'
+
+# 2. Wait for replicas to migrate off the disk
+# 3. Then remove the disk from your node manifest and commit
+```
+
+Skipping step 1 and going straight to removing it from the GitOps manifest will block Flux reconciliation until you patch it manually.
+
+## Backup Strategy
+
+Longhorn supports recurring snapshot and backup jobs via CRDs:
+
+```yaml
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: frequent-snapshot
+  namespace: longhorn-system
+spec:
+  cron: "0 */6 * * *"   # Every 6 hours
+  task: snapshot
+  groups:
+    - default
+  retain: 8
+  concurrency: 2
+```
+
+Snapshots every 6 hours, retaining the last 8. This protects against accidental deletion and allows rollbacks, but snapshots are local — they live on the same nodes as the data itself.
+
+For true disaster recovery, Longhorn can push backups to S3-compatible storage or NFS. That's next on my list.
+
+## What Works Well
+
+**Zero-config scaling.** Add a new node, configure its Longhorn `Node` resource, and replicas start landing there automatically.
+
+**The UI is genuinely good.** You can see replica placement at a glance, trigger manual snapshots, and watch rebuild progress in real-time. Most Kubernetes storage tooling is miserable to operate. Longhorn isn't.
+
+**Online volume expansion.** Need more space on a PVC? Increase the size in the manifest, Flux applies it, Longhorn resizes online. No pod restart required for most workloads.
+
+**Works great on Talos.** The immutable OS model pairs well with Longhorn's declarative approach. Disk management is config, not commands.
+
+## What to Watch Out For
+
+**Rebuild I/O.** When a node rejoins after a long absence, Longhorn rebuilds all missing replicas simultaneously. On spinning disks this saturates I/O. NVMe handles it much better.
+
+**Storage overhead.** Longhorn uses disk space for metadata and snapshot data beyond what your volumes actually contain. Budget for this on smaller disks.
+
+**Config drift is silent.** If your Longhorn node object gets out of sync with your GitOps manifest (e.g., auto-discovered disks), Flux will overwrite the live state on the next sync. Keep your manifests current.
+
+## The Bigger Picture
+
+My homelab philosophy is **data-recovery over reliability**. Services can go down — that's fine. What matters is that the data underneath survives.
+
+Longhorn fits this exactly. Replication means hardware failure doesn't mean data loss. Snapshots mean mistakes are recoverable. The distributed architecture means I don't need a dedicated NAS or a SAN.
+
+Is it enterprise storage? No. But for a three-node homelab on mini PCs, surviving a nine-day node outage without losing a byte is more than enough proof it's the right tool for the job.
+
+<GitHubRepo repo="eduuh/kube-homelab" description="My homelab GitOps repo — Longhorn config lives in cluster/storage/" />
