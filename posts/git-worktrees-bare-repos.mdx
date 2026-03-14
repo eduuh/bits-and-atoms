@@ -1,0 +1,168 @@
+---
+title: Git Worktrees and Bare Repos — Parallel Branches Without the Pain
+slug: git-worktrees-bare-repos
+publishedAt: '2026-03-12'
+summary: >-
+  How I use bare git repos and worktrees to work on multiple branches
+  simultaneously without stashing, switching, or losing context.
+tags:
+  - Git
+  - Developer Workflow
+  - Tooling
+published: false
+series:
+  title: Developer Workflow
+  order: 1
+---
+
+Every developer has been here: you're deep in a feature branch, files open everywhere, half-written code in progress — and someone pings you about a bug on main. Now you're stashing changes, switching branches, waiting for your dev server to restart, fixing the bug, switching back, popping the stash, and hoping nothing broke.
+
+I got tired of that cycle. Git worktrees fixed it.
+
+## The Problem With Branch Switching
+
+The standard git workflow assumes you work on one branch at a time. Your working directory is the branch. Switching means:
+
+1. Stash or commit your work-in-progress
+2. `git checkout other-branch`
+3. Wait for file watchers, dev servers, and IDE indexing to catch up
+4. Do the work
+5. Switch back
+6. Unstash and remember where you were
+
+It works, but it's slow and error-prone. Stash conflicts, forgotten WIP commits, lost context. The mental overhead adds up.
+
+## Worktrees: One Repo, Multiple Directories
+
+Git worktrees let you check out multiple branches simultaneously, each in its own directory. No stashing, no switching. Each branch is a folder you can `cd` into.
+
+```bash
+# Standard workflow
+git stash
+git checkout fix/bug-123
+# ... fix the bug ...
+git checkout feature/new-thing
+git stash pop
+
+# Worktree workflow
+cd ~/projects/worktree/myrepo/fix-bug-123
+# ... fix the bug ...
+cd ~/projects/worktree/myrepo/feature-new-thing
+# Still exactly where I left off
+```
+
+Each worktree is a full working directory with its own checked-out branch, but they all share the same git history and objects. No duplication.
+
+## Why Bare Repos
+
+A normal `git clone` gives you a repo with a default checked-out branch. Adding worktrees to that works, but you end up with an awkward root directory that's also a checkout.
+
+A bare clone has no working directory — just the git database. It becomes a clean hub that worktrees branch out from:
+
+```
+~/projects/
+├── bare/
+│   ├── bits-and-atoms.git      # bare repo (git objects only)
+│   ├── kube-homelab.git
+│   └── personal-notes.git
+└── worktree/
+    ├── bits-and-atoms/
+    │   ├── main/               # worktree → main branch
+    │   ├── drafts/             # worktree → drafts branch
+    │   └── write-blogs-session/  # worktree → this post
+    ├── kube-homelab/
+    │   └── main/
+    └── personal-notes/
+        ├── main/
+        └── learning/
+```
+
+The bare repo is the source of truth. Worktrees are lightweight checkouts that share it. I can have `main`, `drafts`, and a feature branch all open in separate terminal tabs or editor windows — with their own file state, their own dev servers, their own everything.
+
+## The `wt` Script
+
+I wrote a small wrapper around `git worktree` to handle the conventions:
+
+```bash
+# Clone a new repo as bare
+wt clone git@github.com:eduuh/bits-and-atoms.git
+# → ~/projects/bare/bits-and-atoms.git
+# → ~/projects/worktree/bits-and-atoms/main (auto-created)
+
+# Add a worktree for a branch
+wt add drafts
+# → ~/projects/worktree/bits-and-atoms/drafts
+
+# Create a new branch from main
+wt add -b feature/new-thing main
+# → ~/projects/worktree/bits-and-atoms/feature-new-thing
+
+# Interactive branch selection with fzf
+wt add
+# → fuzzy picker of all remote branches
+
+# Navigate to a worktree
+wt go bits-and-atoms/drafts
+
+# Clean up when done
+wt remove bits-and-atoms/feature-new-thing
+```
+
+The script handles a few things that raw `git worktree` doesn't:
+
+- **Directory conventions.** Bare repos go in `~/projects/bare/`, worktrees in `~/projects/worktree/repo/branch/`. Branch names get sanitized — `feature/new-thing` becomes `feature-new-thing` as a directory.
+- **Auto-setup on clone.** `wt clone` creates the bare repo, configures remote fetch refs, and checks out the default branch as the first worktree.
+- **Interactive selection.** Running `wt add` without arguments opens fzf with all available branches.
+- **Cleanup.** `wt remove` handles the git worktree removal and cleans up empty directories.
+
+## Daily Workflow
+
+My typical day looks like this:
+
+**Morning:** I open my terminal, `cd` into whatever worktree I'm working on. Main is always there if I need to check something. Other branches are right next door.
+
+**Bug comes in:** `wt add fix/urgent-bug`. I'm in a fresh checkout in seconds. Fix it, commit, push, delete the worktree. My feature branch never noticed.
+
+**Code review:** `wt add coworkers-branch`. I can run their code locally while my own work stays untouched.
+
+**Multiple features:** Sometimes I'm working on two things that touch different parts of the codebase. Two worktrees, two editor windows, zero conflicts.
+
+## Pairing With Tmux
+
+Each worktree gets its own tmux session via [tat](https://github.com/eduuh/dotfiles), my session manager. When I switch context, I'm switching tmux sessions — which means switching entire terminal environments, not just branches.
+
+```bash
+# Jump to a project (uses zoxide frecency)
+tat
+# → fzf picker of projects and worktrees
+# → attaches or creates a tmux session for the selected directory
+```
+
+The tmux session name matches the directory, so I always know which branch I'm in just by looking at the status bar.
+
+## What I Wish I Knew Earlier
+
+**Worktrees share the git lock.** If you're running a long `git` operation in one worktree (like a rebase), other worktrees can't do git operations until it finishes. This rarely matters in practice, but it's worth knowing.
+
+**Deleting the bare repo breaks everything.** The worktrees are just pointers back to the bare repo's object store. Treat the bare repo as sacred.
+
+**Some tools don't understand worktrees.** Most modern editors handle them fine, but occasionally a tool will get confused by the `.git` file (a pointer to the bare repo) instead of a `.git` directory. This has gotten better over the years.
+
+**Fetch refs need configuration.** A bare clone doesn't fetch remote branches by default. The `wt` script handles this with:
+
+```bash
+git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+git fetch origin
+```
+
+Without this, `git branch -a` shows nothing and you'll wonder why.
+
+## When Not to Use This
+
+This setup adds a layer of indirection. If you only work on one branch at a time and rarely context-switch, standard git is simpler. The bare repo + worktree approach pays off when you're juggling multiple branches, reviewing others' code, or need to keep long-running processes alive on specific branches.
+
+For me, the moment I stopped stashing and started treating branches as directories, context switching went from minutes to seconds — and the mental load dropped to near zero.
+
+---
+
+Next up: [Branch Notes](/blog/branch-notes-per-branch-tracking) — how I track todos, decisions, and blockers per branch so nothing falls through the cracks.
