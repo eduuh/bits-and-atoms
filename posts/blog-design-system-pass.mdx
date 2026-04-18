@@ -1,0 +1,124 @@
+---
+title: A Design System Pass on a Personal Blog
+slug: blog-design-system-pass
+publishedAt: '2026-04-18'
+summary: How I stopped reinventing the same page layout three times and shrunk every route down to PageSection → PageContainer → PageHeader → grid.
+tags:
+  - Engineering
+  - my-blog
+published: false
+---
+
+Most personal blogs grow the way mine did: every new page invents its own
+layout. The `/about` page picks one container width, `/now` picks another,
+the home grows a hero image that doesn't appear anywhere else, and
+`/series` ships with whatever came out of the last AI prompt. After a
+while every route is a special snowflake and small visual changes
+(spacing, headings, eyebrow labels) need six edits to land everywhere.
+
+This post is about taking a Saturday afternoon to collapse all of that
+into one pattern and a tiny set of design tokens.
+
+## The pattern
+
+Every route now looks like this:
+
+```tsx
+<PageSection>
+  <PageContainer>
+    <PageHeader
+      eyebrow="Writing"
+      title="Recent posts"
+      subtitle={siteConfig.description}
+      trailing={`${posts.length} posts`}
+    />
+    {/* page-specific content grid */}
+  </PageContainer>
+</PageSection>
+```
+
+Three primitives:
+
+- `PageSection` is the outer `<section>` that owns vertical rhythm
+  (`py-8 md:py-12` by default, with `sm` and `lg` presets). Pages stop
+  hand-rolling top/bottom padding.
+- `PageContainer` clamps width to `max-w-5xl` and applies the page
+  gutter. Same width on every route, full stop.
+- `PageHeader` is the consistent eyebrow + title + subtitle + trailing
+  block at the top of every page. It pulls type from the design tokens
+  so titles look identical on `/`, `/blog`, `/tags`, `/series`, `/about`.
+
+## The tokens
+
+The other half of the cleanup was killing the magic numbers. Every page
+had its own `text-2xl` here and `text-3xl` there. Now there is one
+`global.css` block:
+
+```css
+:root {
+  --page-max-width: 64rem;
+  --page-gutter: 1.5rem;
+
+  --fs-display: clamp(2.5rem, 2rem + 2.5vw, 3.5rem);
+  --fs-h1:      clamp(1.875rem, 1.5rem + 1.5vw, 2.5rem);
+  --fs-h2:      clamp(1.375rem, 1.2rem + 0.6vw, 1.75rem);
+  --fs-h3:      1.125rem;
+  --fs-body:    1rem;
+
+  --lh-tight:  1.1;
+  --lh-snug:   1.3;
+  --lh-normal: 1.55;
+  --ls-tight:  -0.02em;
+  --ls-wide:   0.14em;
+}
+```
+
+And a tiny set of component classes that bind those tokens to semantic
+names:
+
+```css
+.page-title    { font-size: var(--fs-h1); /* … */ }
+.page-subtitle { font-size: var(--fs-body); color: hsl(var(--muted-foreground)); }
+.section-title { font-size: var(--fs-h2); }
+.card-title    { font-size: var(--fs-h3); }
+.eyebrow       { font-size: var(--fs-xs); letter-spacing: var(--ls-wide); text-transform: uppercase; }
+```
+
+The point isn't that these are clever — they aren't. The point is that
+"page title" now means a specific size, weight, and tracking, and a
+component that wants to look like a page title says so by name instead
+of duplicating the rule.
+
+## What got fixed for free
+
+Once every page used the same primitives, several bugs that I'd been
+ignoring stopped existing:
+
+- The home page had a translucent header (`bg-background/20`) while
+  every other route had `bg-background/80`. Content scrolling under
+  the home header looked like the page background was changing on
+  scroll. One opaque header on every route made the bug go away.
+- Post detail and series detail pages had bespoke gradient hero
+  images that didn't match the rest of the site. Replacing them with
+  `PageSection → PageContainer → PageHeader` brought them back in
+  line.
+- Card spacing was inconsistent across `/tags`, `/series`, and
+  `/topics`. A single `surface-card` + `surface-card-hover` pair
+  unified the hover lift and the border tint.
+
+## What I didn't do
+
+I deliberately didn't reach for a UI library. The site already had
+shadcn-style primitives (`Card`, `Button`) from the monorepo's
+`core-web` package. Adding a second system on top of that would have
+been more code, not less. The point of a design system isn't a fancy
+component library — it's that "what should this look like?" has one
+answer instead of three.
+
+## Takeaway
+
+If your personal site has more than three pages and they don't share a
+layout primitive, you have homework. Pick the most common shape, give
+it a name, and rebuild every page on top of it. The diff feels scary
+in the PR review but the codebase shrinks and the next page you write
+takes ten minutes instead of an hour.
