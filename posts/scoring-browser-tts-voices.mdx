@@ -1,0 +1,139 @@
+---
+title: Scoring Browser TTS Voices So Read-Aloud Doesn't Sound Like Zarvox
+slug: scoring-browser-tts-voices
+publishedAt: '2026-04-18'
+summary: The Web Speech API hands you 100+ SpeechSynthesisVoice objects, half of which sound like a 1989 Macintosh. Here's a tiny scoring function that picks a good default consistently.
+tags:
+  - Engineering
+  - my-blog
+published: false
+---
+
+The blog has a "read this post aloud" button. The implementation is
+maybe twenty lines of `SpeechSynthesisUtterance`. The actually hard
+part — and the part that took the most iteration — is picking a
+*default voice* that doesn't make the listener immediately turn it
+off.
+
+## The problem with `getVoices()`
+
+When you call `speechSynthesis.getVoices()` in a browser, you get back
+a flat list of every voice the OS knows about. On macOS that includes:
+
+- High-quality neural voices (Siri voices, "Samantha", "Ava")
+- Decent compact voices ("Daniel", "Karen", "Moira", "Tessa")
+- Novelty voices from the System 7 era ("Zarvox", "Bahh", "Bells",
+  "Boing", "Bubbles", "Cellos", "Deranged", "Hysterical", "Trinoids",
+  "Whisper", "Wobble")
+
+Chrome adds its own cloud voices ("Google US English", "Google UK
+English Female"), often with `(Natural)` or `(Neural)` in the name.
+Edge contributes a different set of "Microsoft Aria Online (Natural)"
+voices.
+
+If you naively pick `voices.find(v => v.lang.startsWith('en'))` —
+which is what most tutorials show — you'll end up reading your
+thoughtful blog post in the voice of a robotic clown about half the
+time, depending on which OS+browser the visitor is using.
+
+## A scoring function instead of a heuristic
+
+Instead of trying to guess "the right voice", I score every
+candidate and pick the highest. The score is just a sum of small
+positive nudges, with novelty voices forced to zero so they're never
+the default and can be hidden from the picker.
+
+```ts
+const NOVELTY_VOICE_NAMES = new Set([
+  'Albert', 'Bad News', 'Bahh', 'Bells', 'Boing', 'Bubbles', 'Cellos',
+  'Deranged', 'Good News', 'Hysterical', 'Jester', 'Junior', 'Kathy',
+  'Organ', 'Princess', 'Ralph', 'Superstar', 'Trinoids', 'Whisper',
+  'Wobble', 'Zarvox', 'Fred',
+]);
+
+function scoreVoice(v: SpeechSynthesisVoice): number {
+  const name = v.name;
+  const lower = name.toLowerCase();
+
+  if (NOVELTY_VOICE_NAMES.has(name)) return 0;
+
+  let score = 0;
+
+  // Top tier: explicitly natural/neural voices (Edge, Chrome cloud).
+  if (lower.includes('natural') || lower.includes('neural')) score += 100;
+  if (lower.includes('online')) score += 30;
+
+  // Cloud Google voices (Chrome).
+  if (name.startsWith('Google ')) score += 70;
+
+  // Premium / Enhanced downloaded voices (macOS, iOS).
+  if (lower.includes('premium')) score += 60;
+  if (lower.includes('enhanced')) score += 50;
+
+  // Siri voices are high quality.
+  if (lower.includes('siri')) score += 65;
+
+  // Cloud voices generally beat basic local ones.
+  if (!v.localService) score += 20;
+
+  // Known-good Apple compact voices (pleasant but not premium).
+  const KNOWN_GOOD_APPLE = new Set([
+    'Samantha', 'Allison', 'Ava', 'Evan', 'Nathan', 'Noelle', 'Susan',
+    'Tom', 'Zoe', 'Karen', 'Moira', 'Tessa', 'Serena', 'Daniel',
+    'Fiona', 'Victoria',
+  ]);
+  if (KNOWN_GOOD_APPLE.has(name)) score += 15;
+
+  // Samantha is the iconic macOS/iOS default — prefer her when nothing
+  // higher-quality is available so the default is consistent across
+  // browsers.
+  if (name === 'Samantha') score += 2;
+
+  return score;
+}
+```
+
+Then to pick the default:
+
+```ts
+const englishVoices = availableVoices.filter(v => v.lang.startsWith('en'));
+const bestVoice = englishVoices
+  .slice()
+  .sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
+setSelectedVoice(bestVoice);
+```
+
+And to filter the dropdown so users don't see novelty voices unless
+nothing else qualifies:
+
+```ts
+const SWEET_VOICE_THRESHOLD = 15;
+const sweet = english.filter(v => scoreVoice(v) >= SWEET_VOICE_THRESHOLD);
+const list = sweet.length > 0 ? sweet : english;
+```
+
+The fallback to the full list is important — on a bare-bones Linux
+Chromium, no voice will score above 15, and silently hiding *every*
+voice would break the dropdown entirely.
+
+## Why scoring beats matching
+
+I tried "find the first voice whose name includes 'Natural'" first.
+It worked in Chrome on macOS and broke everywhere else. The scoring
+function works because it's *additive*: a "Microsoft Aria Online
+(Natural)" voice gets `+100` for natural and `+30` for online and
+`+20` for being non-local, totalling 150 — clearly better than a
+"Samantha" at 17 — without the code needing to know anything about
+Microsoft Aria specifically.
+
+Adding a new "good voice" is also a one-line change: just bump a
+score in the function. No special-casing per browser, no
+`if (isEdge && hasNeuralAvailable)` ladders.
+
+## The real lesson
+
+When you're picking a default from a noisy list, scoring is almost
+always better than matching. Matching forces you to enumerate every
+case; scoring lets you describe what you *value* and lets the data
+sort itself. The Web Speech API just happens to be a particularly
+good place to feel the difference.

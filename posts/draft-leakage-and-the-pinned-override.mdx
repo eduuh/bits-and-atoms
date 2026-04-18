@@ -1,0 +1,109 @@
+---
+title: How Five Drafts Ended Up on My Production Blog
+slug: draft-leakage-and-the-pinned-override
+publishedAt: '2026-04-18'
+summary: A short story about a "pinned posts override draft visibility" feature that seemed clever in the moment and quietly leaked five unfinished posts to the live site.
+tags:
+  - Engineering
+  - my-blog
+published: false
+---
+
+The blog has a `pinned: true` frontmatter flag I added a few weeks
+ago. The intent: surface a small number of important posts in a
+sidebar on the home page, even if they were lower in the chronological
+feed. Useful for evergreen things like "Read this first" or a homelab
+overview.
+
+Then I added a "draft" flow: posts with `published: false` are hidden
+from the deployed site so I can write in the open without things
+appearing half-finished. Standard stuff.
+
+The two features collided in a single line:
+
+```ts
+// Hide unpublished posts UNLESS they're explicitly pinned — a pinned
+// post is important enough to surface with a Draft badge.
+if (frontmatter.published === false && frontmatter.pinned !== true) {
+  return null;
+}
+```
+
+The reasoning was: "If I pinned it, I really want people to see it,
+even if it's still cooking. The Draft badge will explain itself."
+
+That reasoning was wrong, and it took me a few weeks to notice.
+
+## What actually happened
+
+Five posts — all early drafts I had pinned because I wanted them
+top-of-mind while writing — were live on production this whole time:
+
+- *Building a Modern Developer Blog*
+- *My Future Smart Home*
+- *My Keyboard Layout*
+- *My Love for an Old Car*
+- *My Programmable Keyboard*
+
+Each had a yellow "Draft" badge next to the title, but a yellow badge
+doesn't really change the fact that visitors were reading
+half-finished posts. Worse, those posts were the ones in my "pinned"
+sidebar, so they were the *first* thing on the home page.
+
+## The fix
+
+The fix is small and obvious in hindsight: a draft is a draft. Pinning
+should affect *order*, never *visibility*.
+
+```ts
+const SHOW_DRAFTS =
+  process.env.NODE_ENV !== 'production' ||
+  process.env.SHOW_DRAFTS === 'true';
+
+const isDraft = (fm: PostFrontmatter): boolean =>
+  fm.published === false || fm.status === 'draft';
+
+if (isDraft(frontmatter) && !SHOW_DRAFTS) {
+  return null;
+}
+```
+
+Two things to notice:
+
+1. **Drafts are still visible locally** — `NODE_ENV !== 'production'`
+   keeps the existing authoring workflow working. I can still see
+   what I'm writing while I write it.
+2. **There's an explicit opt-in** — `SHOW_DRAFTS=true` lets me
+   preview drafts in a prod-like build (e.g. on a staging deploy)
+   without touching the source filter. That's a less surprising knob
+   than the previous "pinned implicitly overrides draft" magic.
+
+The production build dropped from eleven visible posts to six. All
+six are properly published.
+
+## The lesson
+
+I'm writing this down because it's an instance of a pattern I keep
+hitting: a feature ("pin a post to the sidebar") quietly grows a
+secondary effect ("…and bypass the draft gate") because the two
+ideas were tangled in the same code path. The two ideas are
+unrelated. They should be separate.
+
+Two heuristics I'm trying to internalize from this:
+
+1. **One flag, one effect.** If `pinned: true` only changes order,
+   it does what it says on the tin and nothing else. The moment it
+   *also* changes visibility, every reader of the code has to know
+   that.
+2. **Default to the more conservative behavior.** Drafts being
+   hidden is the conservative default. Drafts being visible because
+   of an unrelated flag is a surprise. When in doubt, surprise less.
+
+The new code says exactly what it does. The old code had a comment
+explaining the surprise, which is itself a hint that the design was
+wrong: if the implementation needs a comment to explain that it's
+doing two things, it's probably doing two things.
+
+(Yes, I am aware of the meta-irony of writing a draft post about
+draft posts leaking to production. This one will land properly when
+it's actually finished.)
