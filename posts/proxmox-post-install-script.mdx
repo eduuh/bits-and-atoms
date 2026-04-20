@@ -1,0 +1,174 @@
+---
+title: "The Proxmox Post-Install Script I Run on Every Node"
+slug: proxmox-post-install-script
+publishedAt: '2026-04-18'
+summary: A single curl-bash from community-scripts.org does the tedious post-install cleanup — no-subscription repos, nag removal, HA toggle, dist-upgrade.
+tags:
+  - Linux
+  - Self-Hosted
+  - Homelab
+published: false
+series:
+  title: Home Lab
+  order: 5
+---
+
+Every fresh Proxmox install needs the same boring set of edits: comment out the enterprise repo, add the no-subscription one, kill the "no valid subscription" popup, turn off HA services you'll never use, update everything. I did this by hand twice. On the third install I went looking for a script, and [community-scripts.org](https://community-scripts.org/scripts/post-pve-install?id=post-pve-install) had already solved it.
+
+## The one-liner
+
+**Run this as root**, straight after [creating your admin user](/blog/proxmox-first-login-admin-user). The script edits `/etc/apt/sources.list.d/`, enables/disables systemd services, and runs `dist-upgrade` — it needs full privileges, and `sudo` won't work from your admin user without extra plumbing:
+
+```bash
+# SSH in as root one more time
+ssh root@<node-ip>
+
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/post-pve-install.sh)"
+```
+
+If you've already disabled root SSH login (good!), run it from the **node's physical or web console** instead — the Shell tab in the Proxmox UI opens a root session, which works fine.
+
+It's interactive — a series of dialog prompts for each change — so you can skip anything you don't want. For a homelab node, the answers are almost always the same.
+
+## Walking through the prompts
+
+**1. `pve-enterprise` repository**
+
+```
+'pve-enterprise' repository already exists.
+
+What do you want to do?
+  keep     Keep as is
+  disable  Comment out (disable) this repo
+```
+
+→ **disable**. The enterprise repo requires a paid subscription key. Leaving it enabled makes every `apt update` noisy with 401 errors. Only keep it if you actually have a subscription tied to this node.
+
+**2. `pve-no-subscription` repository**
+
+```
+'pve-no-subscription' repository does not exist.
+
+What do you want to do?
+  add   Add the pve-no-subscription repo
+  skip  Skip this step
+```
+
+→ **add**. This is the free community repo that replaces enterprise for homelab use. Without it you get no updates at all — kernel, `pve-manager`, nothing. Adding this is the whole reason most people run the script in the first place.
+
+**3. `pvetest` repository**
+
+```
+'pvetest' repository exists.
+
+What do you want to do?
+  keep     Keep as is
+  disable  Comment out (disable) this repo
+```
+
+→ **disable**. `pvetest` is the pre-release channel — fresh kernels, fresh bugs. Enable this if you're actively testing upcoming Proxmox releases or chasing a fix that's only landed in test. For a node that's meant to just *run*, keep it commented out.
+
+**4. Subscription nag**
+
+```
+This will disable the subscription nag popup.
+
+What do you want to do?
+  disable  Remove the subscription nag
+  keep     Keep the nag popup
+```
+
+→ **disable**. The "No valid subscription" modal appears on every web UI login and blocks the screen until you dismiss it. Disabling patches the JS and installs an APT hook so future upgrades don't bring it back. Purely cosmetic — no effect on updates, cluster behavior, or anything else.
+
+**5. High Availability services**
+
+```
+The High Availability services are currently active.
+
+What do you want to do?
+  disable  Stop and disable pve-ha-lrm, pve-ha-crm, corosync
+  keep     Leave HA services running
+```
+
+→ **disable**. HA only does something useful in a multi-node cluster where VMs need to fail over between hosts. On a single node there's nothing to fail over to, and the services just sit in memory burning RAM and filling logs. Disable now; you can re-enable later if you ever add a second node.
+
+**6. Corosync**
+
+```
+Corosync is currently active.
+
+What do you want to do?
+  disable  Stop and disable corosync
+  keep     Leave corosync running
+```
+
+→ **disable**. Corosync is the cluster messaging layer that HA rides on — if HA is off and you're running a single node, corosync has nothing to coordinate. Disabling it stops the chatter and the log noise. Same caveat as HA: turn it back on the day you build a cluster.
+
+**7. Update the system**
+
+```
+Update Proxmox VE now?
+
+  yes  Run apt update && apt dist-upgrade
+  no   Skip the update
+```
+
+→ **yes**. With the repos now pointing at `pve-no-subscription`, this is the first update that actually pulls current packages. It reinstalls `proxmox-widget-toolkit` too, which is what makes the nag patch stick. Expect a few minutes of output scrolling past.
+
+**8. Reboot**
+
+```
+Reboot Proxmox VE now? (recommended)
+```
+
+→ **yes**. New kernel, fresh service state, clean slate. Once it comes back up, log in as your admin user and you're on a properly configured node.
+
+## What it actually does
+
+It detects whether you're on PVE 8.x or 9.x and picks the right repo format (classic `.list` vs. the new deb822 `.sources`). Then:
+
+**Repositories**
+- Disables `pve-enterprise` (the one that nags if you don't have a subscription)
+- Enables `pve-no-subscription` — free updates for homelab use
+- Writes the Debian sources (`bookworm` or `trixie`) with `main contrib`
+- Adds Ceph and pvetest repos but leaves them **commented out** — available if you want them, not active by default
+
+**The subscription nag**
+- Patches the web UI JavaScript so the "No valid subscription" popup stops appearing on login
+- Installs an APT hook at `/etc/apt/apt.conf.d/no-nag-script` so the patch re-applies every time `proxmox-widget-toolkit` updates
+
+That last detail is the one I appreciate most. I'd previously patched the nag manually, and every `apt upgrade` brought it back. The hook solves that permanently.
+
+**High Availability**
+- If HA is running, offers to disable `pve-ha-lrm`, `pve-ha-crm`, and `corosync`
+- If it's off, offers to enable them
+
+HA only matters in a multi-node cluster. On a single mini-PC node, disabling these frees memory and reduces noise in logs.
+
+**Final steps**
+- Runs `apt update && apt dist-upgrade`
+- Reinstalls `proxmox-widget-toolkit` (to apply the nag patch cleanly)
+- Prompts for a reboot
+
+## Should you `curl | bash` a script from the internet?
+
+Fair question. Three things that make me comfortable with this one:
+
+1. **It's open** — [the source](https://github.com/community-scripts/ProxmoxVE/blob/main/tools/pve/post-pve-install.sh) is on GitHub, reviewable before you run it.
+2. **The community-scripts project is well-known** in the Proxmox space, with many contributors and public issues.
+3. **A fresh node has nothing to lose.** I run this immediately after install, before any VMs or data exist. Worst case: reinstall.
+
+If you're running it against an established node, read the script first. Every time. That's true for any curl-bash, not just this one.
+
+## My standard bring-up order
+
+For every new Proxmox node:
+
+1. [Flash the USB](/blog/dd-block-size-bsd-vs-gnu)
+2. [Install Proxmox VE](/blog/installing-proxmox-ve)
+3. [Create an admin user, disable root SSH](/blog/proxmox-first-login-admin-user)
+4. Run this post-install script
+5. Reboot
+6. Log in as the admin user, start building VMs
+
+Steps 3 and 4 used to take thirty minutes of fiddling. Now they're a copy-paste and eight dialog prompts. The time I save compounds across every node I spin up.
