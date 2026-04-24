@@ -1,0 +1,94 @@
+---
+title: 'dd Block Size: BSD vs GNU'
+slug: dd-block-size-bsd-vs-gnu
+publishedAt: '2026-04-18'
+summary: >-
+  A small but surprising gotcha — `bs=1m` works on macOS but fails on Linux, and
+  `bs=1M` is the other way round. Here's why, and how to write portable commands.
+tags:
+  - Shell
+  - Unix
+  - Tips
+published: false
+status: draft
+---
+
+If you've ever copied a `dd` command from a blog written on macOS and run it on Linux (or vice versa), you've probably hit this:
+
+<Terminal lines={[
+  "$ sudo dd if=proxmox.iso of=/dev/sdb bs=1m status=progress",
+  "dd: invalid number: '1m'"
+]}/>
+
+The command is correct — on BSD `dd`. On GNU `dd`, block sizes are case-sensitive and the lowercase suffix isn't valid.
+
+This trips me up often enough that I want a single reference I can point to.
+
+## The difference
+
+**BSD `dd`** (macOS, FreeBSD) accepts either case for the binary-multiple suffixes:
+
+```bash
+bs=1m   # 1 MiB — works
+bs=1M   # 1 MiB — also works
+```
+
+**GNU `dd`** (most Linux distros via coreutils) is strict:
+
+```bash
+bs=1M   # 1 MiB — works
+bs=1m   # error: "invalid number"
+```
+
+GNU also distinguishes binary and decimal multiples — `1M` is 1 MiB (1,048,576 bytes), `1MB` is 1 MB (1,000,000 bytes). BSD doesn't make that distinction at all; everything is binary.
+
+## Why
+
+GNU coreutils follows the IEC binary prefix convention: uppercase letters (`K`, `M`, `G`) mean binary multiples (1024, 1024², 1024³), and combining them with `B` (`KB`, `MB`, `GB`) switches to decimal multiples (1000, 1000², 1000³). Lowercase suffixes aren't part of the spec.
+
+BSD `dd` predates that convention and has always been lenient about case. The manual page simply lists `b`, `k`, `m`, `g` as valid suffixes and `dd` accepts either case.
+
+Neither is wrong — but they're not interchangeable.
+
+## Writing portable commands
+
+If you're writing instructions that readers on any platform will run, stick to uppercase:
+
+```bash
+dd if=image.iso of=/dev/rdisk4 bs=1M status=progress
+```
+
+Uppercase `M` works on both. Lowercase `m` only works on BSD.
+
+For the same reason, I avoid `bs=1mb` and `bs=1MB` in tutorials — the behavior diverges (BSD rejects both; GNU accepts `1MB` as 1,000,000 bytes, not 1,048,576). Just write `1M` and move on.
+
+<Callout type="tip">
+The `status=progress` flag is also GNU-specific. On macOS, send SIGINFO with `Ctrl+T` to get a one-line progress report from BSD `dd`. Recent macOS versions (Sonoma and later) added `status=progress` for compatibility, but it's not universal — don't rely on it in cross-platform scripts.
+</Callout>
+
+## The rdisk trick on macOS
+
+While we're here: on macOS, `dd` to `/dev/disk4` is dramatically slower than `/dev/rdisk4`. The `r` prefix accesses the raw (unbuffered) device, which skips an extra layer of caching for block transfers.
+
+```bash
+# Slow — goes through the buffer cache
+sudo dd if=image.iso of=/dev/disk4 bs=1M
+
+# Fast — raw device
+sudo dd if=image.iso of=/dev/rdisk4 bs=1M
+```
+
+The difference on an external USB stick is roughly 5x. Linux doesn't have this distinction — `/dev/sdX` is already the raw block device.
+
+## Quick reference
+
+| Platform | Works | Fails |
+|----------|-------|-------|
+| macOS / BSD | `bs=1m`, `bs=1M`, `bs=1k`, `bs=1K` | `bs=1MB` (unknown) |
+| Linux / GNU | `bs=1M` (1 MiB), `bs=1MB` (1 MB decimal) | `bs=1m`, `bs=1k` |
+
+When in doubt: **uppercase, no `B`**. Works everywhere.
+
+## Related
+
+This comes up in nearly every homelab install post. See [Installing Proxmox VE](/blog/installing-proxmox-ve) where I use `dd` to write the installer to USB — the `bs=1M` in that post is portable exactly because of this.
