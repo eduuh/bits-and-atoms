@@ -24,22 +24,22 @@ changelog:
 
 Deploying to production is easy. The hard part is having a staging environment that mirrors production but stays private. Here's how I set up my blog with Cloudflare Pages and protect staging with Cloudflare Access.
 
-## The Problem
+## The problem
 
 I wanted:
-- **Production** at `eduuh.com` - public, indexed by search engines
-- **Staging** at `staging.eduuh.com` - private, for testing before going live
+- **Production** at `eduuh.com` — public, indexed
+- **Staging** at `staging.eduuh.com` — private, for poking at changes before they go live
 
-Cloudflare Pages handles the deployment, but by default both environments would be public.<Footnote id={1}>Cloudflare Pages automatically creates preview deployments for every branch and pull request, which are publicly accessible by default.</Footnote> I needed a way to gate staging behind authentication without adding complexity to my app.
+Cloudflare Pages handles the deployment, but both environments are public by default.<Footnote id={1}>Cloudflare Pages creates preview deployments for every branch and pull request, publicly accessible by default.</Footnote> I needed staging behind authentication without wiring anything into the app itself.
 
-## The Stack
+## The stack
 
-- **Cloudflare Pages** - Static site hosting with automatic deployments
-- **Cloudflare Access** - Zero Trust authentication layer
-- **GitHub Actions** - CI/CD pipeline
-- **Email OTP** - Simple authentication without managing passwords
+- **Cloudflare Pages** — static site hosting with automatic deployments
+- **Cloudflare Access** — Zero Trust authentication layer
+- **GitHub Actions** — CI/CD pipeline
+- **Email OTP** — simple auth without managing passwords
 
-## The Deployment Flow
+## The deployment flow
 
 ```d2
 direction: right
@@ -85,9 +85,9 @@ User -> Cloudflare.access: Protected
 Cloudflare.access -> Sites.stage: Email OTP
 ```
 
-The key insight: Cloudflare Access intercepts requests to `staging.eduuh.com` before they reach the site. No code changes needed - authentication happens at the edge.
+The thing to notice: Cloudflare Access intercepts requests to `staging.eduuh.com` before they reach the site. No code changes. Authentication happens at the edge.
 
-## GitHub Actions Workflow
+## GitHub Actions workflow
 
 The deployment workflow pushes to different branches based on the environment:
 
@@ -146,25 +146,25 @@ Cloudflare Pages automatically maps:
 - `main` branch → production (`eduuh.com`)
 - `staging` branch → staging (`staging.eduuh.com`)
 
-## Setting Up Cloudflare Access
+## Setting up Cloudflare Access
 
-Cloudflare Access sits in front of your staging domain and requires authentication before anyone can view the site. No code changes needed - it's all at the edge.
+Cloudflare Access sits in front of the staging domain and requires auth before anyone can view the site. All at the edge.
 
-### 1. Create an Access Application
+### 1. Create an Access application
 
 In Cloudflare Zero Trust dashboard:
 - Go to **Access** → **Applications**
 - Create a **Self-hosted** application
 - Set the domain to `staging.eduuh.com`
 
-### 2. Configure Identity Provider
+### 2. Configure identity provider
 
 For simplicity, I use **One-time PIN** (email OTP):
 - Go to **Settings** → **Authentication**
 - Add **One-time PIN** as a login method
 - No external OAuth setup required
 
-### 3. Create an Access Policy
+### 3. Create an Access policy
 
 The policy controls who can authenticate:
 
@@ -196,9 +196,9 @@ This allows anyone with a Gmail address to request access. You can restrict it f
 }
 ```
 
-## Automating Access Configuration
+## Automating Access configuration
 
-Managing Access via the dashboard works, but I prefer automation. Here's how to configure it via API:
+The dashboard works, but I'd rather script it. Here's the API version:
 
 ```bash
 # Set your credentials
@@ -230,9 +230,9 @@ curl -X PUT "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/access/ap
   }'
 ```
 
-## DNS Configuration
+## DNS configuration
 
-By default, Cloudflare Pages custom domains point to the production branch. To make `staging.eduuh.com` serve the staging branch, update the DNS CNAME:
+By default, Pages custom domains point at the production branch. To make `staging.eduuh.com` serve the staging branch, update the DNS CNAME:
 
 ```bash
 # Update DNS to point to staging branch alias
@@ -242,11 +242,11 @@ curl -X PATCH "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$
   --data '{"content":"staging.blog-2026-290.pages.dev"}'
 ```
 
-The branch alias (`staging.your-project.pages.dev`) automatically points to the latest deployment on that branch.
+The branch alias (`staging.your-project.pages.dev`) tracks the latest deployment on that branch.
 
-## Protecting All Preview URLs
+## Protecting all preview URLs
 
-Cloudflare Pages generates unique URLs for each deployment (e.g., `9fad24de.blog-2026-290.pages.dev`). To protect all preview URLs, create a wildcard Access application:
+Pages generates a unique URL for each deployment (`9fad24de.blog-2026-290.pages.dev`, that kind of thing). To gate all of them, create a wildcard Access application:
 
 ```bash
 # Create wildcard Access app
@@ -268,15 +268,15 @@ This protects:
 - `9fad24de.blog-2026-290.pages.dev` (specific deployments)
 - Any future preview URLs
 
-## The Flow
+## The flow
 
-1. Push code to `main` → deploys to production (public)
-2. Push code to `staging` → deploys to staging (protected)
+1. Push to `main` → deploys to production (public)
+2. Push to `staging` → deploys to staging (protected)
 3. Visit `staging.eduuh.com` → Cloudflare Access intercepts
-4. Enter email → receive OTP code
+4. Enter email → OTP code lands in your inbox
 5. Enter code → access granted for 24 hours
 
-Here's what the authentication looks like:
+Here's what the auth page looks like:
 
 ![Cloudflare Access login page](/images/Screenshot%202026-01-15%20at%2009.38.53.png)
 
@@ -284,17 +284,17 @@ After entering your email, you receive an OTP code:
 
 ![Cloudflare Access OTP email](/images/Screenshot%202026-01-15%20at%2009.38.34.png)
 
-## API Token Permissions
+## API token permissions
 
-For the GitHub Actions deployment, create an API token with:
-- **Cloudflare Pages** - Edit
+For the GitHub Actions deployment token:
+- **Cloudflare Pages** — Edit
 
-For managing Access and DNS via API, you need:
-- **Access: Apps and Policies** - Edit
-- **Access: Organizations, Identity Providers, and Groups** - Edit
-- **Zone - DNS** - Edit (for updating CNAME records)
+For managing Access and DNS via API:
+- **Access: Apps and Policies** — Edit
+- **Access: Organizations, Identity Providers, and Groups** — Edit
+- **Zone — DNS** — Edit (for updating CNAME records)
 
-Or use the **"Edit Cloudflare Zero Trust"** template and add DNS permissions.
+Or use the **"Edit Cloudflare Zero Trust"** template and add DNS permissions on top.
 
 ## Gotchas
 
@@ -308,21 +308,19 @@ Or use the **"Edit Cloudflare Zero Trust"** template and add DNS permissions.
 
 ## Cost
 
-This entire setup is free:
-- Cloudflare Pages - free tier covers most sites
-- Cloudflare Access - free for up to 50 users
-- GitHub Actions - free for public repos
+The whole setup is free:
+- Cloudflare Pages — free tier covers most sites
+- Cloudflare Access — free for up to 50 users
+- GitHub Actions — free for public repos
 
-## What's Next
+## What's next
 
-I'm planning to add:
-- **Service tokens** for CI/CD to test staging without email auth
+A few things I want to add:
+- **Service tokens** for CI to hit staging without email auth
 - **Bypass rules** for health check endpoints
-- **Terraform** to manage Access configuration as code
+- **Terraform** for Access config as code
 
-## Summary
-
-The final setup protects all non-production URLs:
+The final shape:
 
 | URL | Branch | Protected |
 |-----|--------|-----------|
@@ -330,4 +328,6 @@ The final setup protects all non-production URLs:
 | `staging.eduuh.com` | staging | Access (email OTP) |
 | `*.blog-2026-290.pages.dev` | all previews | Access (wildcard) |
 
-The combination of Cloudflare Pages + Access gives me a production-grade deployment pipeline with zero infrastructure to manage.
+---
+
+*Pages plus Access. No infra to run, no app code to touch. That's the appeal.*

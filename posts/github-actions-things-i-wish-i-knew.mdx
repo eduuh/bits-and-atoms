@@ -15,7 +15,7 @@ tags:
 
 I've been setting up CI/CD for a monorepo recently and hit enough non-obvious things that it's worth writing down. These aren't basics — assume you've already written a workflow or two.
 
-## Matrix Strategy with `include`
+## Matrix strategy with `include`
 
 When you have multiple services to build, the naive approach is one job per service. The better approach is a matrix:
 
@@ -34,11 +34,11 @@ Each entry in `include` is a set of variables available throughout the job as `$
 
 **`fail-fast: false` matters.** The default is `true`, which means if one job fails, GitHub cancels the others. For builds, you usually want to see all failures at once, not just the first one.
 
-## OIDC — When It Works and When It Doesn't
+## OIDC — when it works and when it doesn't
 
-OIDC lets GitHub Actions authenticate to cloud providers without storing long-lived secrets. For AWS and GCP it's pretty seamless. For Azure it mostly works but has a sharp edge.
+OIDC lets GitHub Actions authenticate to cloud providers without storing long-lived secrets. For AWS and GCP it's mostly painless. For Azure it mostly works, with one sharp edge.
 
-The setup: create an app registration, add a federated credential for your repo, grant the necessary role. The federated credential's audience **must** be `api://AzureADTokenExchange`. Not `api://AzureADTokenEndpoint`, which looks like it could be right but isn't — Azure will return `AADSTS700212` and the error message won't tell you why.
+The setup is the usual dance: app registration, federated credential pointed at the repo, the right role assigned. The federated credential's audience **must** be `api://AzureADTokenExchange`. Not `api://AzureADTokenEndpoint`, which looks plausible but isn't — Azure returns `AADSTS700212` and the error message doesn't tell you why.
 
 ```yaml
 permissions:
@@ -48,7 +48,7 @@ permissions:
 
 The `permissions` block is required at the workflow or job level. Without `id-token: write`, the OIDC token request fails silently.
 
-## The buildx Credentials Problem
+## The buildx credentials problem
 
 If you're using `docker/build-push-action`, you're using buildx. Buildx runs in its own container driver — it doesn't inherit Docker credentials from the runner's default context.
 
@@ -78,7 +78,7 @@ What works is `docker/login-action@v3` with credentials that survive the OAuth c
     password: ${{ secrets.ACR_PASSWORD }}
 ```
 
-## Registry Cache for Faster Builds
+## Registry cache for faster builds
 
 Without caching, every run rebuilds from scratch. With registry cache, unchanged layers are pulled from the registry instead:
 
@@ -93,7 +93,7 @@ Without caching, every run rebuilds from scratch. With registry cache, unchanged
 
 The `:cache` tag is just a convention. It'll be created on the first push.
 
-## Tag with SHA, Not Branch Name
+## Tag with SHA, not branch name
 
 ```yaml
 tags: |
@@ -103,7 +103,7 @@ tags: |
 
 Branch name tags (`main`, `latest` only) make it impossible to roll back to a specific build. The SHA tag gives you a direct link between what's running and the exact commit that built it. You can always trace back from the registry to the source.
 
-## `workflow_dispatch` for Manual Triggers
+## `workflow_dispatch` for manual triggers
 
 ```yaml
 on:
@@ -114,7 +114,7 @@ on:
 
 `workflow_dispatch` adds a "Run workflow" button in the Actions tab. Useful for re-running a build after fixing infrastructure (like a broken ACR credential) without pushing a dummy commit.
 
-## Checking What Broke
+## Checking what broke
 
 ```bash
 # List recent runs for a specific workflow

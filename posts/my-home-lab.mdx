@@ -2,7 +2,7 @@
 title: My Home Lab
 slug: my-home-lab
 publishedAt: '2026-01-13'
-summary: A deep dive into my Kubernetes-based homelab running on Talos Linux with GitOps, self-hosted services, and full observability.
+summary: A tour of my Kubernetes-based homelab running on Talos Linux with GitOps, self-hosted services, and full observability.
 tags:
   - Kubernetes
   - Self-Hosted
@@ -13,11 +13,11 @@ series:
   order: 2
 ---
 
-A homelab is more than just servers in a closet - it's a playground for learning, a production environment for self-hosted services, and a way to take control of your own data. Here's a comprehensive tour of my setup.
+A homelab isn't just servers in a closet. It's a playground for learning, a quiet production environment for the stuff I actually use, and a way to keep my own data on my own machines. Here's the full tour.
 
 For details on the physical machines, check out [Homelab Hardware](/blog/homelab-hardware).
 
-## The Hardware
+## The hardware
 
 My cluster runs on compact, power-efficient mini PCs:
 
@@ -29,13 +29,13 @@ My cluster runs on compact, power-efficient mini PCs:
 
 The `intel-c-firewall` node runs as a VM on Proxmox, hosted on a Glovary mini PC that also runs an OPNsense VM (firewall) and Pi-hole DNS. The other two nodes (`amd-w-minipc` and `intel-w-acemagic`) are bare metal mini PCs.
 
-**Total Resources:** 24 CPU cores, ~35 GB RAM, ~2.1 TB storage
+**Total resources:** 24 CPU cores, ~35 GB RAM, ~2.1 TB storage
 
-All nodes are connected via an unmanaged switch - no VLANs or fancy network segmentation, just simple flat networking that gets the job done.
+All nodes hang off an unmanaged switch. No VLANs, no fancy segmentation, just flat networking that works.
 
-The beauty of mini PCs is their power efficiency - the entire cluster runs on about 50W idle, making it practical to run 24/7 without destroying the electricity bill.
+Idles at 50W total. The electricity bill barely notices.
 
-## The Operating System: Talos Linux
+## The operating system: Talos Linux
 
 Instead of traditional Linux distributions, I run [Talos Linux](https://www.talos.dev/) - an immutable, API-managed operating system designed specifically for Kubernetes.
 
@@ -73,9 +73,9 @@ cluster/
 
 When I want to deploy something new, I commit YAML to the repo and push. Flux handles the rest.
 
-## Networking Stack
+## Networking
 
-### Load Balancing: MetalLB
+### Load balancing: MetalLB
 
 Since this is bare metal (no cloud load balancers), I use [MetalLB](https://metallb.universe.tf/) in Layer 2 mode to assign external IPs to services:
 
@@ -91,7 +91,7 @@ All HTTP traffic flows through [ingress-nginx](https://kubernetes.github.io/ingr
 - A subdomain under `*.eduuh.com`
 - Proper headers and timeouts for large file uploads
 
-### DNS: Pi-hole + CoreDNS
+### DNS: Pi-hole and CoreDNS
 
 I run a split DNS setup:
 
@@ -104,19 +104,19 @@ Pi-hole blocks ads and tracking at the DNS level, while CoreDNS resolves interna
 
 ## Storage: Longhorn
 
-My homelab philosophy prioritizes **data-recovery over reliability** - services can go down, but data must be recoverable. [Longhorn](https://longhorn.io/) fits this perfectly, providing distributed block storage across the cluster:
+My rule for the homelab is simple: I care about getting data back, not about staying up. Services can fall over. Data can't disappear. [Longhorn](https://longhorn.io/) fits that — distributed block storage across the cluster:
 
 - **Replication:** 2-3 copies of each volume spread across nodes
 - **Snapshots:** Automated backups
 - **Access modes:** Both ReadWriteOnce and ReadWriteMany supported
 
-This gives me resilience - if a node dies, the data is still available on other nodes. I still need to spend time learning Longhorn's periodic backup features for off-cluster disaster recovery.
+If a node dies, the data is still available on the others. Off-cluster backups are next on my list — I haven't spent enough time with Longhorn's recurring backup jobs yet.
 
-## What I Self-Host
+## What I self-host
 
-### Media Stack
+### Media stack
 
-The crown jewel of any homelab - a complete media management system:
+The usual suspects for a media setup:
 
 - **[Jellyfin](https://jellyfin.org/):** Media streaming server (the open-source Plex alternative)
 - **[qBittorrent](https://www.qbittorrent.org/):** Torrent client with web UI
@@ -149,19 +149,17 @@ This enables hardlinks - when Sonarr moves a completed download, it's instant wi
 - **[IT-Tools](https://github.com/CorentinTh/it-tools):** Developer utilities collection
 - **[Uptime Kuma](https://github.com/louislam/uptime-kuma):** Status monitoring
 
-### The Dashboard
+### The dashboard
 
-Glance ties everything together with a clean overview of all services:
+Glance ties everything together:
 
 ![Glance dashboard showing all homelab services](/images/Screenshot%202026-01-14%20at%2019.18.11.png)
 
-The dashboard displays service health, response times, and organizes everything into logical categories - Applications, Media, Monitoring, and Infrastructure. It's the first thing I check when troubleshooting.
+Service health, response times, grouped into Applications, Media, Monitoring, and Infrastructure. It's the first thing I check when something feels off.
 
 ## Observability
 
-You can't manage what you can't measure. My monitoring stack includes:
-
-### Prometheus + Grafana
+### Prometheus and Grafana
 
 The [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) provides:
 
@@ -170,7 +168,7 @@ The [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/
 - AlertManager for notifications
 - Pre-configured dashboards for Kubernetes metrics
 
-### Custom Exporters
+### Custom exporters
 
 - **OPNsense Exporter:** Pulls metrics from my firewall (CPU, memory, interface traffic, WAN latency)
 - **Speedtest Tracker:** Hourly internet speed tests with historical data
@@ -180,7 +178,7 @@ I have custom Grafana dashboards showing:
 - Download/upload speeds over time
 - Per-interface traffic on the firewall
 
-## The Service Map
+## The service map
 
 | Service | URL | Purpose |
 |---------|-----|---------|
@@ -199,19 +197,19 @@ I have custom Grafana dashboards showing:
 | Pi-hole | pihole.eduuh.com | DNS admin |
 | Longhorn | longhorn.eduuh.com | Storage UI |
 
-## Lessons Learned
+## Lessons learned
 
-**Start simple, iterate.** My first attempt was over-engineered with Ansible, Terraform, and multiple VMs. The current setup with Talos + Flux is far simpler and more reliable.
+**Start simple, iterate.** My first attempt was over-engineered with Ansible, Terraform, and multiple VMs. The current setup with Talos and Flux is far simpler and more reliable.
 
 **GitOps is worth it.** Having everything in Git means I can rebuild the entire cluster from scratch. When things break, `git log` shows exactly what changed.
 
-**Shared storage matters.** The media stack only works smoothly because all services see the same filesystem. Planning storage architecture upfront saves pain later.
+**Shared storage matters.** The media stack only works smoothly because all services see the same filesystem. Planning it upfront saves pain later.
 
 **Monitoring from day one.** Adding observability after the fact is painful. Bake it in from the start.
 
-**Data-recovery over reliability.** It's just me and my wife using these services - if something goes down, it's not the end of the world. What matters is that data can be recovered. This mindset simplifies infrastructure decisions significantly.
+**Data-recovery over reliability.** It's just me and my wife using these services. If something goes down, nobody pages me. What matters is that data can be recovered. That mindset makes every other infrastructure decision easier.
 
-## Hardware Roadmap
+## Hardware roadmap
 
 The current storage setup works, but there's room to grow:
 
@@ -223,16 +221,15 @@ The current storage setup works, but there's room to grow:
 
 ![Dell laptop internals showing the motherboard, 42Wh battery, and upgrade potential](/images/20260114_192856.jpg)
 
-This would separate bulk media storage from application data, improving both performance and backup strategies. With more storage capacity, I could also explore self-hosting smart home camera feeds.
+Splitting bulk media off the cluster would ease both performance and backups. More capacity also opens the door to self-hosting smart home camera feeds.
 
-## What's Next
+## What's next
 
-- Learning more about homelabbing and infrastructure patterns
 - Hardware transcoding for Jellyfin (Intel QuickSync)
 - Automated backups to off-site storage
 - Home Assistant for smart home integration
-- More automation with n8n workflows
+- More n8n workflows
 
-The homelab is never "done" - and that's the fun of it.
+---
 
-📝 I'll be writing more in-depth posts about each service as I learn and refine my setup.
+*The homelab is never "done". That's the fun of it.*

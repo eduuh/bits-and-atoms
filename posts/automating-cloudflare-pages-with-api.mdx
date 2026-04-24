@@ -18,13 +18,13 @@ series:
 
 I needed to set up staging and production domains for my blog on Cloudflare Pages. You can do this through the dashboard but I don't know, I just didn't feel like clicking around. The API is right there.
 
-## What I Wanted
+## What I wanted
 
 Pretty straightforward:
 - **`eduuh.com`** → `blog-2026` main branch
 - **`staging.eduuh.com`** → `blog-2026` staging branch
 
-## Getting API Access
+## Getting API access
 
 Grabbed an API token from [the Cloudflare dashboard](https://dash.cloudflare.com/profile/api-tokens). You need:
 
@@ -36,7 +36,7 @@ Grabbed an API token from [the Cloudflare dashboard](https://dash.cloudflare.com
   Keep the token out of git. I stuck mine in `.env` and added it to `.gitignore`.
 </Callout>
 
-## Adding the Domains
+## Adding the domains
 
 Attaching custom domains to a Pages project:
 
@@ -56,9 +56,9 @@ curl -X POST \
   --data '{"name":"staging.eduuh.com"}'
 ```
 
-## Making Staging Actually Point to Staging
+## Making staging actually point to staging
 
-Here's the part that tripped me up. Both domains were now attached, but they both pointed to the `main` branch. Not super useful for a staging environment.
+Here's where I got stuck. Both domains were now attached, but both were serving `main`. Not what you want from a staging URL.
 
 You have to explicitly tell Cloudflare which branch a domain should serve:
 
@@ -72,7 +72,7 @@ curl -X PATCH \
 
 This was the key bit I couldn't figure out from the dashboard. The API made it obvious.
 
-## DNS While I'm At It
+## DNS while I'm at it
 
 My domain's already on Cloudflare, so I figured I'd set up the DNS records via API too:
 
@@ -104,7 +104,7 @@ curl -X POST \
 
 Both point to the same `pages.dev` subdomain - Cloudflare routes to the right branch based on the domain config we set earlier.
 
-## That's It
+## That's it
 
 | Domain | Branch |
 |--------|--------|
