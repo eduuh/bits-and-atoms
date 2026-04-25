@@ -19,9 +19,9 @@ I use [Longhorn](https://longhorn.io/) for this. Here's everything I've learned 
 
 ## What is Longhorn?
 
-Longhorn is a cloud-native distributed block storage system for Kubernetes, originally built by Rancher. It's now a CNCF incubating project.
+Longhorn is a distributed block storage system for Kubernetes, originally built by Rancher. It's now a CNCF incubating project.
 
-At its core, Longhorn takes local disks on your Kubernetes nodes and turns them into replicated block devices that your pods can consume as standard PVCs. You get:
+It takes the local disks on your Kubernetes nodes and turns them into replicated block devices that pods consume as standard PVCs. You get:
 
 - **Replication** across nodes — configurable per volume
 - **Snapshots** and incremental backups
@@ -31,7 +31,7 @@ At its core, Longhorn takes local disks on your Kubernetes nodes and turns them 
 
 No special hardware, no SAN, no NFS. Just the disks already attached to your nodes.
 
-## My Setup
+## My setup
 
 I run three nodes, each contributing storage to the cluster:
 
@@ -43,7 +43,7 @@ I run three nodes, each contributing storage to the cluster:
 
 Longhorn runs a manager pod on each node, which handles scheduling replicas, monitoring disk health, and coordinating volume attachments.
 
-## GitOps Configuration
+## GitOps configuration
 
 Everything is managed declaratively via Flux. My Longhorn node configs live in `cluster/storage/` as `Node` custom resources:
 
@@ -70,9 +70,9 @@ spec:
 
 This is declarative infrastructure — Flux applies it, Longhorn enforces it. If someone manually tweaks a disk config in the UI, the next sync reverts it. Intentional, but worth knowing if you're debugging and wondering why your changes aren't sticking.
 
-## Disk Tags
+## Disk tags
 
-One of Longhorn's best features is **disk tags**, which let you target specific storage tiers for your volumes. I use:
+One of Longhorn's best features is **disk tags** — they let you target specific storage tiers per volume. I use:
 
 | Tag | Meaning |
 |-----|---------|
@@ -93,9 +93,9 @@ parameters:
   diskSelector: "fast"
 ```
 
-Postgres databases go on fast NVMe disks. Large media archives go on cheaper spinning disks. You get this automatically just by choosing the right StorageClass at deploy time.
+Postgres databases land on fast NVMe disks. Large media archives land on cheaper spinning disks. All by picking the right StorageClass at deploy time.
 
-## How Replication Works
+## How replication works
 
 When a pod writes to a Longhorn volume:
 
@@ -110,7 +110,7 @@ If a node goes down, volumes with surviving replicas stay healthy and keep servi
 
 This is where things get interesting.
 
-## When a Node Disappears
+## When a node disappears
 
 One of my worker nodes (`intel-w-acemagic`) went offline unexpectedly. The kubelet stopped posting status, Kubernetes marked it `NotReady`, and within minutes the damage was visible:
 
@@ -138,7 +138,7 @@ Once the node came back online, Longhorn recovered automatically:
 
 The data was intact. Nothing lost. That's the value of replication — even with a single surviving replica on a different node, your data is safe.
 
-## Lessons from the Outage
+## Lessons from the outage
 
 **Single-replica volumes are a trap.** I had five volumes with only one copy of their data. Any workload that matters should have at least two replicas. One replica means one hardware failure = data inaccessible.
 
@@ -146,7 +146,7 @@ The data was intact. Nothing lost. That's the value of replication — even with
 
 **Terminating pods block volume reattachment.** When a node dies, its pods get stuck `Terminating`. For StatefulSets with Longhorn volumes, the old pod needs to be fully gone before Longhorn can safely attach elsewhere. Force-deleting (`--force --grace-period=0`) works, but understand what you're doing.
 
-## Removing a Disk Safely
+## Removing a disk safely
 
 When I physically removed an extra SSD from `intel-w-acemagic`, Longhorn's admission webhook blocked the config change:
 
@@ -170,7 +170,7 @@ kubectl patch node.longhorn.io intel-w-acemagic -n longhorn-system \
 
 Skipping step 1 and going straight to removing it from the GitOps manifest will block Flux reconciliation until you patch it manually.
 
-## Backup Strategy
+## Backup strategy
 
 Longhorn supports recurring snapshot and backup jobs via CRDs:
 
@@ -193,7 +193,7 @@ Snapshots every 6 hours, retaining the last 8. This protects against accidental 
 
 For true disaster recovery, Longhorn can push backups to S3-compatible storage or NFS. That's next on my list.
 
-## What Works Well
+## What works well
 
 **Zero-config scaling.** Add a new node, configure its Longhorn `Node` resource, and replicas start landing there automatically.
 
@@ -203,7 +203,7 @@ For true disaster recovery, Longhorn can push backups to S3-compatible storage o
 
 **Works great on Talos.** The immutable OS model pairs well with Longhorn's declarative approach. Disk management is config, not commands.
 
-## What to Watch Out For
+## What to watch out for
 
 **Rebuild I/O.** When a node rejoins after a long absence, Longhorn rebuilds all missing replicas simultaneously. On spinning disks this saturates I/O. NVMe handles it much better.
 
@@ -211,12 +211,12 @@ For true disaster recovery, Longhorn can push backups to S3-compatible storage o
 
 **Config drift is silent.** If your Longhorn node object gets out of sync with your GitOps manifest (e.g., auto-discovered disks), Flux will overwrite the live state on the next sync. Keep your manifests current.
 
-## The Bigger Picture
+## The bigger picture
 
-My homelab philosophy is **data-recovery over reliability**. Services can go down — that's fine. What matters is that the data underneath survives.
+My rule for the homelab: **data-recovery over reliability**. Services can go down. That's fine. What matters is that the data underneath survives.
 
-Longhorn fits this exactly. Replication means hardware failure doesn't mean data loss. Snapshots mean mistakes are recoverable. The distributed architecture means I don't need a dedicated NAS or a SAN.
+Longhorn fits that. Replication means a hardware failure isn't a data loss. Snapshots mean a mistake is recoverable. The distributed architecture means I don't need a NAS or a SAN.
 
-Is it enterprise storage? No. But for a three-node homelab on mini PCs, surviving a nine-day node outage without losing a byte is more than enough proof it's the right tool for the job.
+It's not enterprise storage. For a three-node homelab on mini PCs, surviving a nine-day node outage without losing a byte is enough proof it's the right call.
 
 <GitHubRepo repo="eduuh/kube-homelab" description="My homelab GitOps repo — Longhorn config lives in cluster/storage/" />

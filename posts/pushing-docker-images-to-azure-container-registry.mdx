@@ -16,11 +16,11 @@ tags:
 
 I needed to build 4 Docker images from a monorepo and push them to Azure Container Registry on every push to main. Sounds simple. It wasn't.
 
-## What I Was Going For
+## What I was going for
 
 Four services, four images, all pushed to `wira360.azurecr.io` automatically. Tags with the git SHA for traceability, plus `latest` for convenience. No stored secrets — OIDC for auth.
 
-## The Workflow (Final Version)
+## The workflow (final version)
 
 ```yaml
 name: Build and Push to ACR
@@ -76,7 +76,7 @@ jobs:
 
 `fail-fast: false` means a slow build in one job won't cancel the others. The registry cache means repeat builds only transfer changed layers.
 
-## One-Time Azure Setup
+## One-time Azure setup
 
 Before this can run you need an ACR. I already had one at `wira360.azurecr.io`. Enable admin credentials:
 
@@ -90,7 +90,7 @@ That gives you a username and password. Store them as GitHub secrets:
 - `ACR_USERNAME`
 - `ACR_PASSWORD`
 
-## The OIDC Rabbit Hole
+## The OIDC rabbit hole
 
 I originally wanted keyless auth — no stored secrets, just OIDC. The setup looks clean: create an app registration, add a federated credential pointing at your repo, grant it `AcrPush`, and use `azure/login@v2` in the workflow.
 
@@ -123,7 +123,7 @@ So you try `az acr login --expose-token`, get a short-lived access token, and pa
 
 There are ways to make OIDC work with buildx (passing the token through buildx secrets, using a different driver), but they add complexity for marginal benefit. Admin credentials stored as GitHub secrets are static, they work, and that's enough.
 
-## Verifying It Worked
+## Verifying it worked
 
 ```bash
 az acr repository list --name wira360
