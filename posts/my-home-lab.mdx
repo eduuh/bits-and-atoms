@@ -37,7 +37,7 @@ Idles at 50W total. The electricity bill barely notices.
 
 ## The operating system: Talos Linux
 
-Instead of traditional Linux distributions, I run [Talos Linux](https://www.talos.dev/) - an immutable, API-managed operating system designed specifically for Kubernetes.
+Instead of a traditional Linux distribution, I run [Talos Linux](https://www.talos.dev/), an immutable, API-managed OS designed for Kubernetes.
 
 **Immutable, by design.** No SSH, no shell. The entire OS is read-only and managed via API — minimal attack surface, only essential components. Configuration is defined in YAML and applied via `talosctl`. Upgrades roll out automatically without downtime.
 
@@ -128,7 +128,7 @@ All services share a 200GB volume with organized directories:
 └── movies/
 ```
 
-This enables hardlinks - when Sonarr moves a completed download, it's instant with no extra disk space used.
+This enables hardlinks. When Sonarr moves a completed download, it's instant — no extra disk space used.
 
 ### Productivity
 
