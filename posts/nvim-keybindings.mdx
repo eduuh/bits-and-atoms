@@ -1,0 +1,122 @@
+---
+title: "The Nvim Keybindings That Earn Their Place"
+slug: nvim-keybindings
+publishedAt: '2026-04-24'
+summary: A small pile of nvim keybindings I reach for daily, and the ones I removed because they were never worth the muscle memory.
+tags:
+  - Neovim
+  - Engineering
+published: false
+status: draft
+---
+
+Most nvim configs accumulate keybindings the way a basement accumulates boxes. You set something, it works, you never delete it, and six months later you're looking at a `which-key` menu that takes up a quarter of the screen and contains maps you'd have to Google to remember. I went through mine recently and deleted about a third of them. This post is about the ones that survived, and why.
+
+The rule I used, roughly: if a keymap doesn't save me a visible step over the vim default, it's clutter. The default is already good.
+
+## Motion: `s` for Flash
+
+This is the one I'd miss most if it disappeared. Vim's `/` search is fine for hunting by word, but for getting your cursor to a specific point on screen (that `foo.bar` three lines down on the right) `/` is a six-keystroke chore. [flash.nvim](https://github.com/folke/flash.nvim) binds `s` to a two-char jump. Press <Kbd>s</Kbd>, type two characters from the target, press the label that appears next to it.
+
+```
+<s>fo<a>    → jumps to the `fo` labelled `a`
+```
+
+Two keystrokes plus the label. It replaces `f`, `F`, `t`, `T`, and 90% of my `/` usage. The default `s` is "substitute character" which you can get back with `cl`, so the cost of losing it is zero.
+
+I also kept `r` in operator-pending mode for Flash's "remote", which lets you operate on a distant text object without moving the cursor. `dri{` deletes the contents of the `{...}` block flash lets you jump to. I use this maybe once a week, but when I need it I really need it.
+
+## File explorer: `;;` for Oil
+
+```lua
+{ ";;", function()
+    require("oil").open(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":h"))
+  end }
+```
+
+[oil.nvim](https://github.com/stevearc/oil.nvim) turns a directory into a buffer you edit like text. Add a line to create a file. Delete a line to delete a file. Rename a line to rename a file. `:w` applies. Semicolon-semicolon opens oil in the current file's directory, which is ~95% of the time what I want.
+
+The reason `;;` and not, say, `<leader>e`: `<leader>` sequences cost a timeout delay by default. `;;` is instant and reachable with one finger. I only use this map enough to notice the difference, but I notice.
+
+## Save: `<C-s>` in both insert and normal modes
+
+```lua
+map({ "i", "n" }, "<C-s>", "<cmd>w<CR>", { desc = "Save buffer" })
+```
+
+Vim purists will tell you that you shouldn't save from insert mode — use <Kbd>Esc</Kbd> then <Kbd>:w</Kbd>. They're right that it leaves you in insert mode after saving, which is weird. They're wrong that this matters. I save twenty times an hour and leaving insert mode to do it was burning through my wrist budget.
+
+The one thing I lost: LSP signature help used to be on `<C-s>` by default (Nvim 0.11+). I didn't use it enough to care. That's the trade-off I'm happy with.
+
+## Alternate buffer: `<BS>`
+
+```lua
+map({ "n", "v" }, "<BS>", "<C-^>", { desc = "Alternate buffer" })
+```
+
+Vim's built-in `<C-^>` (pronounced "control caret") swaps between the current buffer and the last one you edited. It's one of the five most useful keys in vim, and nobody uses it because `<C-^>` is impossible to type without looking. Remapping to `<BS>` puts it on a huge, easy-to-hit key. My "flip between test and implementation" loop runs on this.
+
+## Git: the `g*` cluster
+
+```lua
+map("n", "gn", gs.next_hunk,     "Next hunk")
+map("n", "gp", gs.prev_hunk,     "Prev hunk")
+map("n", "gs", gs.stage_hunk,    "Stage hunk")
+map("n", "gu", gs.undo_stage,    "Undo stage")
+map("n", "gb", gs.blame_line,    "Blame line")
+```
+
+[gitsigns.nvim](https://github.com/lewis6991/gitsigns.nvim) gets a whole letter cluster under `g*`. Navigate hunks with <Kbd>gn</Kbd>/<Kbd>gp</Kbd>, stage with <Kbd>gs</Kbd>, undo with <Kbd>gu</Kbd>, blame with <Kbd>gb</Kbd>. The mental model is "`g` for git, second char for action" and it collapses a whole git-stage-commit loop into one hand.
+
+For anything that isn't a hunk-level action (viewing commit history, checking out branches, writing a commit message) I punch out to LazyGit:
+
+```lua
+{ ";c", function() vim.cmd.LazyGit() end }
+```
+
+<Kbd>;c</Kbd> opens it as a floating terminal. That's my "git TUI" escape hatch. nvim itself also runs as a floating popup, managed by tmux and scoped to the current git worktree — the wiring is in [One branch, one window](/blog/one-branch-one-window).
+
+## LSP: the 0.11 built-in defaults
+
+This is the section where I deleted the most keymaps. Nvim 0.11 ships with these as defaults:
+
+| Key | Action |
+|-----|--------|
+| <Kbd>K</Kbd> | Hover docs |
+| <Kbd>grn</Kbd> | Rename |
+| <Kbd>gra</Kbd> | Code action |
+| <Kbd>grr</Kbd> | References (via `vim.ui.select`) |
+| <Kbd>gri</Kbd> | Implementations |
+| <Kbd>grt</Kbd> | Type definition |
+| <Kbd>grx</Kbd> | Code lens (0.12) |
+
+I used to map `<leader>rn`, `<leader>ca`, `<leader>gd`, a whole grid of `<leader>` stuff. Then I found out Neovim was shipping sensible defaults and mine were worse. The defaults also play nicely with fzf-lua — it intercepts `vim.ui.select` so `grr` and `gri` pop up an fzf picker instead of a minimalist floating list.
+
+## Fuzzy: `<C-p>` for files
+
+```lua
+map("n", "<C-p>", fzf.files)
+map("n", "<leader>fw", fzf.live_grep)
+```
+
+<Kbd>Ctrl-p</Kbd> has been muscle memory for files since Sublime Text 2, and I see no reason to fight that. `<leader>ff` also works for consistency with a leader-prefix mental model, but I use `<C-p>` 99% of the time.
+
+## The deleted pile
+
+What I removed in the same pass, for honesty.
+
+`<leader>ld`, `<leader>li`, and `<leader>lt` were LSP navigation maps that duplicated `gd`, `gi`, and `gt` from the built-in defaults. The Treesitter text-object maps (`af`, `ic`, `aa`, and friends) sounded clever but I never reached for them; the general vim text objects (`iw`, `ip`, `i"`, `i(`) cover 95% of what I actually needed. A competitive-programming plugin had `;r` and `;a` mapped — I haven't done competitive programming in five years and they were dead weight. And every AI plugin keymap went too. I closed that door and went back to a quieter editor.
+
+The test I apply, stolen from the woodworking people: if you don't reach for a tool in six months, it goes in a drawer. If you don't reach for it in a year, it leaves the shop.
+
+## The rule underneath
+
+A keymap is not a feature. A keymap is a tax on your working memory. You pay it every time you load your config, every time you look at a cheat sheet, every time you hesitate on a shortcut because there are too many of them to remember which one does the thing. A five-map config you've burned into your fingers will beat a fifty-map config you keep having to check, every single time.
+
+The goal isn't to have the most keybindings. The goal is to have the fewest that make your actual workflow feel inevitable.
+
+My full keymap reference, if you want the long version, [lives in the repo](https://github.com/eduuh/nvim/blob/main/docs/keymaps.md). The ones above are the load-bearing ten percent.
+
+---
+
+*Every keymap I deleted, I had to look up just to remember it existed. Argument settled.*
