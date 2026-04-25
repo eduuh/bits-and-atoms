@@ -1,30 +1,202 @@
 ---
-title: My Home Networking - Opnsense
+title: "Installing OPNsense 26 as a VM on Proxmox"
 slug: my-home-networking-opnsense
-publishedAt: '2026-03-01'
+publishedAt: '2026-04-18'
 summary: >-
-  Why I chose OPNsense as my router and how it serves as the backbone of my home
-  network.
+  Why OPNsense is the backbone of my home network, and how I run it as a VM on
+  the same Proxmox node that hosts my Kubernetes control plane.
 tags:
-  - Infrastructure
+  - Linux
+  - Self-Hosted
+  - Homelab
+  - Networking
 published: false
 series:
   title: Home Lab
-  order: 1
+  order: 6
 ---
 
-The router provided by your ISP is usually garbage. It lacks features, security updates, and performance. That's why I switched to OPNsense.
+The router your ISP hands you is usually garbage. Missing features, slow security updates, allergic to anything resembling a real network setup. That's why I switched to OPNsense, the open-source FreeBSD-based firewall and routing platform.
 
-## Why OPNsense?
+With [Proxmox installed](/blog/installing-proxmox-ve), [an admin user in place](/blog/proxmox-first-login-admin-user), and the [post-install script](/blog/proxmox-post-install-script) done, OPNsense is the first workload I bring up.
 
-OPNsense is an open-source, FreeBSD-based firewall and routing platform. It's a fork of pfSense but with a cleaner UI and a more open development model.
+## Why OPNsense (and not pfSense)?
 
-## Hardware
+OPNsense is a fork of pfSense with a cleaner UI, faster release cadence, and a more open development model. For a homelab I want something I can read the source of, file issues against, and upgrade confidently every quarter. OPNsense delivers all three.
 
-I'm running OPNsense on a dedicated mini-PC with dual 2.5GbE NICs. This ensures it can handle my full internet bandwidth with Intrusion Detection/Prevention (IDS/IPS) enabled.
+## Running it as a VM (not a dedicated box)
 
-## Key Features I Use
+My Glovary mini PC does double duty. It runs OPNsense as my firewall *and* hosts a VM acting as the Kubernetes control plane. Running your firewall as a VM sounds wrong at first. The box that routes your internet is the one hosting it? If Proxmox falls over, the internet goes with it?
 
-- **VLANs:** Segregating IoT devices from my main network.
-- **VPN:** WireGuard for secure remote access to my home network.
-- **Traffic Shaping:** Ensuring gaming and video calls get priority over downloads.
+Yes. And for a homelab the tradeoff is worth it:
+- One less box to power, cable, and cool
+- Snapshots before every config change, so a bad rule rolls back in seconds
+- The whole firewall backs up as a Proxmox backup
+
+The box has four physical NICs. One stays dedicated to Proxmox management; two go to OPNsense (WAN + LAN); the fourth is a spare. Dedicated physical interfaces mean throughput stays honest even with IDS/IPS enabled.
+
+## Before you start
+
+You'll need a Proxmox host with at least two free NICs beyond your management interface (one NIC plus tagged VLANs works, but dedicated is cleaner), the OPNsense `amd64` "dvd" ISO from [opnsense.org/download](https://opnsense.org/download/), and Proxmox web UI access as your admin user.
+
+The ISO ships as a `.bz2` archive. Extract it before uploading:
+
+```bash
+bunzip2 OPNsense-26.1-dvd-amd64.iso.bz2
+```
+
+## 1. Upload the ISO
+
+Proxmox UI → `local` storage → ISO Images → Upload. Point at the extracted `.iso`. Any storage with the "ISO image" content type works if yours isn't `local`.
+
+## 2. Set up the bridges
+
+Before touching the VM, decide your bridge topology. Don't share your management bridge with OPNsense. If the firewall misbehaves during setup, you want Proxmox still reachable.
+
+My layout on a 4-NIC box:
+
+| Bridge | Physical NIC | Role |
+|--------|-------------|------|
+| `vmbr0` | `nic3` | Proxmox management (unchanged) |
+| `vmbr1` | `nic0` | OPNsense WAN, cable from modem/ISP |
+| `vmbr2` | `nic1` | OPNsense LAN, cable to switch |
+
+In Proxmox: your node → System → Network → Create → Linux Bridge. Set Name to `vmbr1` and Bridge ports to `nic0` (or whatever maps to your WAN port), leave IP/gateway blank, Autostart on. Repeat for `vmbr2` with `nic1`. Click Apply Configuration at the top.
+
+Don't plug in the WAN/LAN cables yet. Cable after the VM is configured so you can control when traffic first flows.
+
+## 3. Create the VM
+
+Top-right Create VM. Settings per tab follow.
+
+### General
+
+- Name: `opnsense`
+- Start at boot: ✅ (if Proxmox reboots, the firewall must come back automatically)
+- Start/Shutdown order: `1` (first up, last down)
+
+### OS
+
+- ISO: the OPNsense image you uploaded
+- Type: `Other` (OPNsense is FreeBSD; no preset)
+
+### System
+
+- Machine: `q35`
+- BIOS: `OVMF (UEFI)` — modern, required for clean PCIe passthrough later
+- Add EFI disk: ✅, on `local-lvm`
+- Pre-Enroll keys: ❌ (not needed for a FreeBSD guest)
+- SCSI Controller: `VirtIO SCSI single`
+
+### Disks
+
+- Bus/Device: SCSI 0 (required for SSD emulation and discard to be checkable)
+- Storage: `local-lvm`
+- Size: 40 GiB (32 is enough; 40 gives headroom for logs and backups)
+- Cache: `Default (No cache)`
+- Discard: ✅
+- SSD emulation: ✅ (valid on NVMe hosts too: it's a hint to the guest, unrelated to physical media)
+- IO thread: ✅
+- Async IO: `Default (io_uring)`
+
+### CPU
+
+- Sockets: 1, Cores: 2 for a home gigabit link, 4 if you'll run IDS/IPS
+- Type: `host` (passes AES-NI through for VPN throughput)
+
+### Memory
+
+- `4096` MiB. OPNsense 26 requires at least 3 GB (the installer errors out below that); 4 GB gives headroom for Unbound, logs, and occasional package builds. Bump to 6 GB if you enable Suricata.
+- Ballooning: ❌ (firewalls want predictable memory)
+- Allow KSM: ❌. Kernel same-page merging has documented side-channel leaks. A firewall is the last VM you want sharing pages with others.
+
+### Network
+
+Skip this tab for now. Check "No network device" at the top and we'll add NICs explicitly after the VM is created.
+
+### Confirm
+
+Start after created: ❌. Click Finish.
+
+## 4. Add the two NICs
+
+On the VM: Hardware → Add → Network Device. Do this twice.
+
+| NIC | Bridge | Model | Firewall | Multiqueue |
+|-----|--------|-------|----------|-----------|
+| 1st → `net0` → `vtnet0` → WAN | `vmbr1` | VirtIO | ❌ | 2 |
+| 2nd → `net1` → `vtnet1` → LAN | `vmbr2` | VirtIO | ❌ | 2 |
+
+Three things matter here. Leave Firewall unchecked on both: OPNsense *is* the firewall, so Proxmox's bridge-level filter would double-filter and hide drops from OPNsense's logs. Set Multiqueue to your vCPU count — VirtIO defaults to a single send/receive queue per NIC, which bottlenecks throughput. And order matters: OPNsense sees NICs in attachment order, so the first added (`vtnet0`) becomes WAN.
+
+## 5. Verify and boot
+
+Options tab → Boot Order → `scsi0` first, `ide2` (CD-ROM) second, everything else off.
+
+Then cable up: modem or ISP into the physical port mapped to `nic0`, switch or clients into `nic1`.
+
+Start the VM, open the Console.
+
+## 6. Install
+
+Log in as `installer` / `opnsense`.
+
+Accept the default keymap. Pick Install (UFS) — UFS over ZFS for a firewall VM, since ZFS wants 8 GB+ for ARC to perform well and Proxmox does VM-level snapshots via LVM anyway, so you don't get much from ZFS-inside-guest. Use the GPT partition scheme: it's required because you set the VM to UEFI (OVMF), and MBR is legacy BIOS only; picking MBR here results in a VM that won't boot.
+
+Select `da0` as the destination disk (your 40 GB VirtIO SCSI disk). Confirm "destroy all data on da0". The installer copies files for one to three minutes. Set a strong root password, *different from your Proxmox root password*. Complete Install, then Reboot.
+
+While the VM reboots, eject the ISO. Proxmox UI → VM → Hardware → CD/DVD Drive (ide2) → Edit → "Do not use any media" → OK. Otherwise the VM boots the installer again.
+
+## 7. Interface assignment
+
+On first real boot OPNsense asks which NIC is which:
+
+```
+Valid interfaces are:
+vtnet0    bc:24:11:17:15:3e   <up>
+vtnet1    bc:24:11:82:bf:9f   <up>
+
+Enter the WAN interface name or 'a' for auto-detection:
+```
+
+Type `vtnet0` for WAN, `vtnet1` for LAN. Skip optional interfaces with Enter. Confirm the summary.
+
+OPNsense DHCPs a WAN lease from your ISP and assigns `192.168.1.1/24` to LAN by default.
+
+## 8. Access the web UI
+
+From a machine on the LAN bridge:
+
+```
+https://192.168.1.1
+```
+
+Log in as `root` with the password you set. Accept the self-signed cert warning — expected on first boot. The **Setup Wizard** launches: timezone, DNS, LAN subnet. Take your time. This is the foundation everything else sits on.
+
+## What tripped me up
+
+The download is a `.bz2` archive. The Proxmox upload field accepts it without complaint and you'll waste ten minutes wondering why nothing boots. Run `bunzip2` first.
+
+OPNsense 26 needs at least 3 GB of RAM. Older builds ran on 2 GB. The new installer dies mid-partition with a cryptic error that doesn't say "RAM" anywhere.
+
+GPT, not MBR. Under a UEFI VM, picking MBR lets the installer succeed and then the VM never boots again. GPT is mandatory with OVMF.
+
+SSD emulation needs SCSI. It's greyed out on VirtIO Block. Use SCSI with the VirtIO SCSI single controller. Same performance, plus TRIM.
+
+If the installer throws partition errors on a "fresh" disk, that's stale LVM data confusing it. Detach and remove the disk in Proxmox, add a new one, and move on. Cheaper than debugging from the installer's shell.
+
+## What's next
+
+Getting OPNsense installed is the easy part. The follow-ups will cover the actual configuration:
+
+- VLANs for IoT isolation
+- [Firewall rules and aliases](/blog/opnsense-firewall)
+- WireGuard for secure remote access
+- Traffic shaping for gaming and video calls
+- Monitoring that tells me when something's off
+
+Each is its own post. For now: one Proxmox node, one firewall VM, internet flowing through both. That's the backbone.
+
+---
+
+*The router your ISP gave you is not the firewall you want, and you'll never know until you've run a real one for a week.*

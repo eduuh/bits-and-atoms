@@ -1,0 +1,199 @@
+---
+title: "Provisioning a Talos Kubernetes Cluster on Mini PCs"
+slug: talos-kubernetes-on-mini-pcs
+publishedAt: '2026-04-19'
+summary: >-
+  Three nodes: one Talos control plane VM on Proxmox and two bare-metal worker
+  mini PCs. DHCP reservations in OPNsense keep the IPs honest, talosctl does
+  the rest.
+tags:
+  - Linux
+  - Self-Hosted
+  - Homelab
+  - Kubernetes
+published: false
+series:
+  title: Home Lab
+  order: 9
+---
+
+With [Proxmox up](/blog/installing-proxmox-ve), [OPNsense routing traffic](/blog/my-home-networking-opnsense), and DHCP pinned to deterministic IPs, the cluster itself can come online. My setup is three mini PCs running Talos Linux: one control plane VM on the firewall box, two workers on bare metal.
+
+## The cluster at a glance
+
+| Hostname | Hardware | Role | IP |
+|----------|----------|------|-----|
+| `intel-c-firewall` | [Glovary N100 VM on Proxmox](/blog/homelab-hardware) | Control plane | `10.0.0.201` |
+| `amd-w-minipc` | AMD Ryzen 16-core mini PC | Worker (compute) | `10.0.0.200` |
+| `intel-w-acemagic` | ACEMAGIC 4-core mini PC | Worker (storage) | `10.0.0.202` |
+
+Three nodes is the minimum for a sensible cluster: one control plane, two workers. Everything runs on the OPNsense LAN (`10.0.0.0/24`), with DHCP reservations in Kea tied to each node's MAC so the IPs never drift.
+
+## Why Talos
+
+Three reasons Talos wins over Ubuntu, k3s, or Debian for a homelab cluster.
+
+No SSH, no shell, no host-level drift. Talos is API-driven. You configure it with a single YAML file applied via `talosctl`. You *cannot* accidentally `apt upgrade` yourself into a broken kernel or leave a root shell in bash history.
+
+Immutable root filesystem. Upgrades swap the whole OS image. Rollbacks are one command. No half-patched boxes.
+
+Kubernetes-first. Talos boots straight into containerd. Minimal surface area: fewer things to own, fewer things to break.
+
+The tradeoff: when something goes wrong, you can't just SSH in and poke. You debug through `talosctl logs`, `talosctl dmesg`, `talosctl read`. For a cluster you leave running, that's a feature.
+
+## Picking the right Talos artifact
+
+The [Talos releases page](https://github.com/siderolabs/talos/releases/latest) lists 30+ files. For this setup you only need two:
+
+| Artifact | What it's for |
+|----------|--------------|
+| `metal-amd64.iso` (~300 MB) | Installer for both the Proxmox VM *and* the bare-metal workers |
+| `talosctl-darwin-arm64` | CLI for your Mac (or `linux-amd64` if you manage from a Linux box) |
+
+Everything else is special-case. `metal-amd64.raw.zst` is for `qm importdisk` or `dd`-ing a physical disk (more steps than the ISO path). `metal-amd64-uki.efi` is direct UEFI boot, which is advanced. `vmlinuz-amd64` plus `initramfs-amd64.xz` is for PXE netboot.
+
+Verify the download:
+
+```bash
+shasum -a 256 metal-amd64.iso
+# compare against the published sha256sum.txt
+```
+
+Make `talosctl` executable and drop it on your PATH:
+
+```bash
+chmod +x ~/Downloads/talosctl-darwin-arm64
+mv ~/Downloads/talosctl-darwin-arm64 ~/.bin/talosctl
+```
+
+## 1. Control plane: Talos VM on Proxmox
+
+The CP lives as a VM on the Glovary alongside OPNsense. One host, two workloads.
+
+Upload the ISO the same way as OPNsense (`local` → ISO Images → Upload). Then create a VM with the settings below — same shape as the OPNsense one, different specs:
+
+| Tab | Setting |
+|-----|--------|
+| General | Name `intel-c-firewall`, Start at boot ✅, Order `2` (after OPNsense) |
+| OS | `metal-amd64.iso`, Type: `Other` |
+| System | `q35`, BIOS `OVMF (UEFI)`, EFI disk on `local-lvm`, SCSI Controller `VirtIO SCSI single` |
+| Disks | SCSI 0, 32 GiB, Discard ✅, SSD emulation ✅, IO thread ✅ |
+| CPU | 2 cores, Type `host` |
+| Memory | `4096` MiB, Ballooning ❌, KSM ❌ |
+| Network | `vmbr2` (LAN), VirtIO, Firewall ❌, Multiqueue `2` |
+
+Same UEFI plus GPT gotchas as OPNsense: UEFI machine, GPT partition scheme, Talos boots.
+
+Boot the VM. The Talos install is hands-off. The live ISO comes up in maintenance mode, picks up its `.201` DHCP reservation, and waits for you to push a machineconfig via `talosctl apply-config`. No installer prompts. No partitioning dialogs. Just an IP and a pending config.
+
+## 2. Workers: Talos on bare metal
+
+For the AMD and ACEMAGIC mini PCs, the exact same ISO flashes to a USB stick:
+
+```bash
+# macOS BSD dd: lowercase m for block size
+diskutil list
+diskutil unmountDisk /dev/disk4
+sudo dd if=metal-amd64.iso of=/dev/rdisk4 bs=1m status=progress
+```
+
+*(If `dd` rejects `bs=1m`, [you're on GNU dd](/blog/dd-block-size-bsd-vs-gnu). Use `bs=1M`.)*
+
+Boot each mini PC from the USB. Talos detects the hardware, brings up the primary NIC, grabs its reserved IP via DHCP, and sits in maintenance mode — same as the CP VM.
+
+The workers don't need any keyboard or mouse interaction after the BIOS boot menu. Once they're sitting at their reserved IPs, you can walk away from the hardware and drive everything from your laptop.
+
+## 3. Generate the machineconfig
+
+On your Mac:
+
+```bash
+mkdir -p ~/.talos/homelab && cd ~/.talos/homelab
+talosctl gen config homelab https://10.0.0.201:6443
+```
+
+This produces three files: `controlplane.yaml` (the CP node config), `worker.yaml` (the worker config), and `talosconfig` (the client certificate bundle).
+
+Move `talosconfig` into place so `talosctl` finds it:
+
+```bash
+mkdir -p ~/.talos
+cp talosconfig ~/.talos/config
+```
+
+## 4. Apply configs and bootstrap
+
+```bash
+# apply to the control plane
+talosctl apply-config --insecure \
+  --nodes 10.0.0.201 \
+  --file controlplane.yaml
+
+# apply to each worker
+for w in 10.0.0.200 10.0.0.202; do
+  talosctl apply-config --insecure --nodes $w --file worker.yaml
+done
+
+# wait ~30s, then bootstrap etcd on the CP (ONCE, never again)
+talosctl bootstrap --nodes 10.0.0.201 --endpoints 10.0.0.201
+```
+
+`--insecure` is fine for the first apply because the node has no identity yet. After that, all further commands run mTLS-authenticated via `talosconfig`.
+
+## 5. Verify and get kubeconfig
+
+```bash
+# Set default endpoint + nodes so we don't repeat flags
+talosctl config endpoint 10.0.0.201
+talosctl config node 10.0.0.201 10.0.0.200 10.0.0.202
+
+# Cluster health
+talosctl health
+
+# Pull kubeconfig for kubectl
+talosctl kubeconfig ~/.kube/config
+
+# Sanity check
+kubectl get nodes
+```
+
+You should see all three nodes in `Ready` state within a minute or two.
+
+## 6. Pin the reservations in OPNsense
+
+Grab each node's MAC so Kea always hands out the same IP:
+
+```bash
+for node in 10.0.0.200 10.0.0.201 10.0.0.202; do
+  echo "=== $node ==="
+  talosctl -n $node get links -o json \
+    | jq -r 'select(.spec.type=="ether" and .spec.physical==true)
+        | "\(.metadata.id) \(.spec.hardwareAddr)"'
+done
+```
+
+Then in OPNsense → Services → Kea DHCPv4 → Reservations, add a host reservation per MAC with the matching IP. Future reboots lock to the same address even if the DHCP lease would've drifted.
+
+## What tripped me up (historic)
+
+My original Talos config was pinned to `10.0.0.x`, so when I first brought OPNsense up with the default `192.168.1.1/24` LAN, nothing could talk. The fix was to move OPNsense LAN to `10.0.0.0/24` so the existing Talos config just worked. Cheaper than re-applying machineconfigs to three nodes.
+
+Kubernetes API reachability is LAN-only on `10.0.0.201:6443`. From outside (an Azure node you add later, say) you need either a port forward, WireGuard, or [KubeSpan](https://www.talos.dev/v1.11/kubernetes-guides/network/kubespan/). My plan is KubeSpan, but it needs a reachable peer discovery endpoint — see `fix-azure-etcd.sh` in my branch notes.
+
+Don't `bootstrap` twice. Running `talosctl bootstrap` on a control plane that already has an etcd cluster will corrupt state. There's a reason it's a separate command. It's the one you run exactly once.
+
+## What's next
+
+With three nodes `Ready`, the cluster is functional but bare. Next in this series:
+
+- [The minimum Kubernetes knowledge actually needed to be productive](/blog/kubernetes-knowledge-i-need)
+- Storage: Longhorn or Rook-Ceph on the ACEMAGIC's NVMe
+- GitOps: FluxCD reconciling from a bare repo
+- Ingress, cert-manager, and LetsEncrypt via DNS-01 (since the API is LAN-only)
+- Observability: [visualizing the whole rack in Grafana](/blog/god-mode-visualizing-infrastructure)
+
+That's the ladder. One rung at a time.
+
+---
+
+*The first time the cluster came up green I sat there refreshing `kubectl get nodes` for a minute, half-expecting a node to fall over. None did.*

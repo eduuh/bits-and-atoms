@@ -8,25 +8,29 @@ tags:
 published: false
 series:
   title: Home Lab
-  order: 5
+  order: 8
 ---
 
-The internet is full of ads and trackers. Pi-hole is a DNS sinkhole that protects your devices from unwanted content without installing any client-side software.
+Every device on my network routes DNS through [Pi-hole](https://pi-hole.net/). No browser extensions, no per-device tweaks. Block once, block everywhere.
 
-## The Setup
+## The setup
 
-I run Pi-hole as a container in my Home Lab (though it runs great on a Raspberry Pi too).
+Pi-hole runs as a container in my home lab. A Raspberry Pi works just as well — the workload is tiny and the memory footprint barely registers.
 
 ## Recursive DNS with Unbound
 
-Instead of forwarding DNS queries to Google (8.8.8.8) or Cloudflare (1.1.1.1), I use Unbound as a recursive DNS resolver.
-- **Privacy:** No single company sees my DNS history.
-- **Security:** DNSSEC validation is handled locally.
+I don't forward queries to Google (8.8.8.8) or Cloudflare (1.1.1.1). Pi-hole hands them to [Unbound](https://nlnetlabs.nl/projects/unbound/about/), which walks the DNS tree itself: ask the root, then the TLD, then the authoritative server.
 
-## Regex Blocking
+Two things fall out of that. No single company sees my DNS history. And DNSSEC validation happens locally rather than on someone else's resolver.
 
-Standard blocklists are great, but Regex allows for powerful pattern matching. I use it to block entire domains of tracking servers and mobile ads.
+## Regex blocking
+
+Blocklists cover the easy stuff. Regex covers the rest. One pattern catches a whole subdomain of mobile-ad telemetry that would otherwise need fifty individual entries.
 
 ## Local DNS
 
-Pi-hole also serves as my local DNS server, allowing me to access services via `plex.home.arpa` instead of remembering IP addresses.
+Pi-hole is also my local DNS server. I type `plex.home.arpa` instead of remembering `192.168.30.42`. The home network gets the convenience of a real domain without anything leaving the LAN.
+
+---
+
+*The day I cut the ads at the DNS layer was the day my phone's battery improved by an hour.*

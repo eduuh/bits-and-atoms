@@ -3,34 +3,36 @@ title: 'How I Sleep at Night: My Paranoid Backup Strategy'
 slug: paranoid-backup-strategy
 publishedAt: '2026-05-03'
 summary: >-
-  Data loss is not an option. Here is my 3-2-1 backup strategy implementation
-  involving NAS, snapshots, and the cloud.
+  My rule for the homelab is simple: services can fall over, data can't
+  disappear. This is how 3-2-1 looks in my closet.
 tags:
   - Infrastructure
 published: false
 series:
   title: Home Lab
-  order: 7
+  order: 11
 ---
 
-I have terabytes of data: photos, documents, code, and media. Losing it would be catastrophic.
+Photos, documents, code, media — terabytes that can't come back if they go. The whole homelab is allowed to fail. The data isn't.
 
-## The 3-2-1 Rule
+## The 3-2-1 rule
 
-- **3 Copies of Data**
-- **2 Different Media Types**
-- **1 Offsite Copy**
+Three copies, on two different media types, with one of them offsite. That's the rule in one line. Everything below is just an instance of it.
 
-## My Implementation
+## My implementation
 
-1.  **Live Data:** Lives on my PC (NVMe SSD) and Proxmox VMs.
-2.  **Local Backup (NAS):** TrueNAS Scale with ZFS.
-    - **Snapshots:** Taken every 15 minutes. I can roll back any file instantly.
-    - **RAID-Z2:** I can lose 2 hard drives without losing data.
-3.  **Offsite Backup:**
-    - **Critical Data:** Encrypted and pushed to Backblaze B2 nightly via Restic.
-    - **Media:** Synced to a remote NAS at a friend's house (we swap backup space).
+The live data sits on my PC's NVMe drive and on the Proxmox VMs. That's copy one.
 
-## Testing Restores
+Copy two is a [TrueNAS Scale](https://www.truenas.com/truenas-scale/) box running ZFS. Snapshots fire every 15 minutes, so a file I deleted at lunch is still there at dinner. The pool is RAID-Z2, which means two drives can die before I lose anything.
 
-A backup is only as good as your ability to restore it. I schedule monthly "fire drills" where I try to recover a random file or VM to ensure the system works.
+Copy three lives away from the house. Critical data (anything I'd cry about) is encrypted with [Restic](https://restic.net/) and pushed to [Backblaze B2](https://www.backblaze.com/cloud-storage) nightly. Media goes to a NAS at a friend's place; we swapped backup space and pretend that counts as offsite redundancy. It does.
+
+## Testing restores
+
+A backup is only as good as the restore. Monthly fire drill: pick a random file, pick a random VM, recover it. If the recovery is awkward, fix the awkward part before I need it for real.
+
+I learned this one the hard way. The first time I needed a file out of B2 I'd never tested the restore path, and the password manager I needed to unlock the encryption key was on the laptop I was trying to restore.
+
+---
+
+*The backup you haven't restored is a story you're telling yourself.*
