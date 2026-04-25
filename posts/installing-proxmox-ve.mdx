@@ -77,7 +77,14 @@ Plug the USB into the target machine and boot from it. On the Glovary I had to p
 
 The Proxmox installer boots into a graphical menu. Pick `Install Proxmox VE (Graphical)`.
 
-Walk through the prompts. The EULA wants a scroll-to-bottom and `I agree`. For target disk, I use the internal NVMe — the default ext4 filesystem is fine for a single-disk setup; pick ZFS only if you've got mirrored disks for redundancy. Set country, timezone, and keyboard correctly now (changing them later is a pain). Use a real email for the root account, Proxmox sends alerts there. The network config gets its own section below; it's the step that deserves the most attention on a multi-NIC box. For the FQDN I went with `proxmox.home.arpa`.
+Walk through the prompts:
+
+1. EULA. Scroll to the bottom, click `I agree`. You can't proceed without accepting.
+2. Target disk. I use the internal NVMe. Default ext4 is fine for a single-disk setup; pick ZFS only if you have mirrored disks.
+3. Country, timezone, keyboard. Set these correctly now — changing them later is a pain.
+4. Root password and admin email. Use a real email; Proxmox sends alerts there.
+5. Network config. Gets its own section below. It's the step that deserves the most attention on a multi-NIC box.
+6. Hostname (FQDN). I went with `proxmox.home.arpa`.
 
 ### Picking the management NIC on a 4-port firewall box
 
@@ -92,11 +99,23 @@ The installer lists them as `eth0` through `eth3` (or in newer versions, predict
 | `eth2` | IoT & Guest, untrusted devices + guest AP | isolated | `10.10.3.0/24` |
 | `eth3` | LAN, internal homelab + Proxmox mgmt | infra | `10.10.1.0/24` |
 
-A few things worth calling out. WiFi for work piggybacks on the Office LAN port: one AP plugged into `eth1`, broadcasting a single work SSID on `10.10.2.0/24`, no VLAN magic. IoT and Guest share `eth2` (combined on `10.10.3.0/24`); a second cheap AP with AP isolation enabled covers both the guest SSID and smart-home devices, and OPNsense firewall rules stop them reaching each other or the LAN. Only three internal networks fit on a 4-port box if you want physical segregation. If I ever want Office and WiFi on separate segments, or Guest truly isolated from IoT, I'll need either a managed switch with VLANs or a bigger firewall appliance. Today, three is plenty.
+A few things worth calling out.
+
+WiFi for work piggybacks on the Office LAN port. One AP plugged into `eth1`, broadcasting a single work SSID on `10.10.2.0/24`. No VLAN magic.
+
+IoT and Guest share `eth2` on `10.10.3.0/24`. A second cheap AP with AP isolation handles both the guest SSID and the smart-home devices. OPNsense firewall rules stop either side from reaching each other or the LAN.
+
+Only three internal networks fit on a 4-port box if you want physical segregation. If I ever want Office and WiFi on separate segments, or Guest truly isolated from IoT, I'll need either a managed switch with VLANs or a bigger firewall appliance. Today, three is plenty.
 
 On my Glovary, I picked `eth3` (the rightmost port) as Proxmox's management interface. The other three ports stay untouched so I can pass them straight through to the OPNsense VM.
 
-A few notes on the choice itself. Pick a port that's physically cabled and reachable — the installer tests the link before letting you continue, so an unplugged cable means the option won't appear. Label all four. Identical 2.5GbE ports look the same, and I labelled each one (WAN / OFFICE / IOT / LAN) before starting. Don't pick the WAN port for management: once Proxmox owns that interface, passing it through to OPNsense gets messy. Keep WAN and mgmt on separate NICs.
+A few notes on the choice itself.
+
+Pick a port that's physically cabled and reachable. The installer tests the link before letting you continue, so an unplugged cable means the option won't even appear in the list.
+
+Label all four. Identical 2.5GbE ports look the same, and I labelled each one (WAN / OFFICE / IOT / LAN) before starting the install.
+
+Don't pick the WAN port for management. Once Proxmox owns that interface, passing it through to OPNsense gets messy. Keep WAN and mgmt on separate NICs.
 
 With `eth3` as management, the host got `10.10.1.10/24`, gateway `10.10.1.1` (OPNsense, once it's running), and DNS `10.10.1.20` (Pi-hole, to be deployed) with `1.1.1.1` as a fallback.
 
@@ -196,7 +215,12 @@ This gets reverted on every Proxmox update, so I keep the command in a script. O
 
 ## Step 7: create your first VM
 
-Now for the fun part. In the web UI, click `Create VM` and fill in the wizard. The defaults are sensible for Linux guests, but four things I always change: CPU type to `host` (exposes the physical CPU flags to the guest at the cost of live migration, which doesn't matter on a single-node cluster); machine type to `q35` for anything modern (`i440fx` is only for very old guests); disk cache left at the default `none` unless there's a specific reason; and network model to `VirtIO` — the paravirtualized driver is dramatically faster than emulated hardware.
+Now for the fun part. In the web UI, click `Create VM` and fill in the wizard. The defaults are sensible for Linux guests, but four things I always change:
+
+- CPU type → `host`. Exposes the physical CPU flags to the guest. Costs you live migration to dissimilar hardware, which doesn't matter on a single-node cluster.
+- Machine type → `q35` for anything modern. `i440fx` is only for very old guests.
+- Disk cache → leave at the default `none` unless you have a specific reason.
+- Network model → `VirtIO`. The paravirtualized driver is dramatically faster than emulated hardware.
 
 For the Kubernetes control plane VM I gave it 4 vCPUs, 4 GB RAM, and 32 GB of disk. Talos Linux is lightweight and doesn't need more.
 
