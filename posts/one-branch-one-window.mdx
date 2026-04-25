@@ -251,7 +251,7 @@ bn done t3                          # check off todo #3
 bn summary                          # dashboard across all branches
 ```
 
-Bind the popup view in tmux:
+Bind the popup view in tmux (the wrapper script is [`tmux-note.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tmux-note.sh)):
 
 ```tmux
 bind n display-popup -E -w 97% -h 97% -d "#{pane_current_path}" "$HOME/.bin/tmux/tmux-note.sh"
@@ -270,6 +270,22 @@ That's it. Everything else has been net-positive for two years.
 ## What's open right now
 
 Eight windows in three sessions. `dotfiles` has the main worktree and one feature branch I'm cleaning up. `personal-notes` has main and a fix branch. `bits-and-atoms` has the `drafts` worktree where this post lives. None of them know the others exist. None of them care. Each one has its own Claude, its own nvim session if I open one, its own tests running if I started any. I move between them with `prefix + ]` and `prefix + C-o`.
+
+## All the scripts in one place
+
+If you want to copy or read any of these directly, they all live in [github.com/eduuh/dotfiles](https://github.com/eduuh/dotfiles):
+
+| File | What it does |
+|------|--------------|
+| [`.tmux.conf`](https://github.com/eduuh/dotfiles/blob/main/.tmux.conf) | All the bindings shown above |
+| [`.bin/wt`](https://github.com/eduuh/dotfiles/blob/main/.bin/wt) | Bare-repo + worktree manager (`clone`, `add`, `remove`, `go`, `fetch`, `prune`) |
+| [`.bin/tmux/tat`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tat) | Project picker (`prefix + C-o`) |
+| [`.bin/tmux/tat-template.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tat-template.sh) | Spawns a session with Claude in pane 0 |
+| [`.bin/tmux/tmux-wt.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tmux-wt.sh) | Worktree picker for the current session (`prefix + o`) |
+| [`.bin/tmux/tmux-lib.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tmux-lib.sh) | Shared helpers — `open_worktree_window`, `ensure_worktree`, etc. |
+| [`.bin/tmux/tmux-edit.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tmux-edit.sh) | Floating nvim popup (`prefix + e`) |
+| [`.bin/tmux/tmux-note.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tmux-note.sh) | Branch-note popup (`prefix + n`) |
+| [`.bin/bn`](https://github.com/eduuh/dotfiles/blob/main/.bin/bn) | Branch-notes manager (`bn add todo`, `bn done`, `bn summary`) |
 
 ---
 
