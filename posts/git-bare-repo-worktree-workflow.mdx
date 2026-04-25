@@ -3,7 +3,7 @@ title: The Git Bare Repo + Worktree Workflow I Use for Everything
 slug: git-bare-repo-worktree-workflow
 publishedAt: '2026-03-06'
 summary: >-
-  How I replaced git clone with bare repos and worktrees — and built a CLI toolchain around it for branch notes, tmux sessions, and zero-friction context switching.
+  How I replaced git clone with bare repos and worktrees, and built a CLI toolchain around it for branch notes, tmux sessions, and zero-friction context switching.
 tags:
   - Git
   - Engineering
@@ -20,7 +20,7 @@ keyTakeaways:
   - Branch notes that travel with your worktrees keep context across sessions
 ---
 
-I've been using git worktrees with bare repos as my primary workflow for over a year now. Not as an experiment — as the way I work on everything. Personal projects, dotfiles, this blog. Every repo.
+I've been using git worktrees with bare repos as my primary workflow for over a year now. Not as an experiment. As the way I work on everything. Personal projects, dotfiles, this blog. Every repo.
 
 The pitch is simple: instead of one working directory that you constantly checkout between branches, you get a directory per branch. No stashing. No "let me commit this WIP real quick." You just open another directory.
 
@@ -79,7 +79,7 @@ You can use `git worktree add` from a regular clone. But then your original clon
 
 With a bare repo, there's no privileged worktree. They're all equal. You can add and remove any of them freely. The bare repo is just the engine room — you never need to touch it directly.
 
-## [`wt`](https://github.com/eduuh/dotfiles/blob/main/.bin/wt) — the worktree manager
+## `wt`: the worktree manager
 
 Typing those `git worktree add` commands gets old. I wrote [`wt`](https://github.com/eduuh/dotfiles/blob/main/.bin/wt), a ~300-line zsh script that wraps the common operations:
 
@@ -98,7 +98,7 @@ The directory convention is predictable: `wt add my-feature` always creates `~/p
 
 Some repos don't benefit from this — my dotfiles and neovim config stay as regular clones. `wt` knows about these exceptions and clones them normally.
 
-## [`tat`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tat) — tmux session per worktree
+## `tat`: tmux session per worktree
 
 I live in tmux. Each worktree gets its own tmux session, named after the directory. [`tat`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tat) (short for "tmux attach") uses zoxide's frecency data to find project directories and attaches or creates sessions for them.
 
@@ -106,7 +106,7 @@ The flow: press a keybinding, fzf pops up showing my projects sorted by how rece
 
 This means switching between "main on tracker" and "feature branch on tracker" is the same gesture as switching between entirely different projects. There's no conceptual difference. They're all just directories with tmux sessions.
 
-## [`bn`](https://github.com/eduuh/dotfiles/blob/main/.bin/bn) — branch notes
+## `bn`: branch notes
 
 This is the piece that makes it all work long-term. [`bn`](https://github.com/eduuh/dotfiles/blob/main/.bin/bn) (branch notes) keeps a markdown note per branch per repo:
 
@@ -223,12 +223,6 @@ If you regularly work on multiple branches of the same repo — yes, try it. The
 
 If you mostly work on one branch at a time and rarely context-switch — probably not worth it. A regular clone is simpler.
 
-All three scripts are open source in my [dotfiles repo](https://github.com/eduuh/dotfiles):
-
-- [`wt`](https://github.com/eduuh/dotfiles/blob/main/.bin/wt) — worktree manager
-- [`bn`](https://github.com/eduuh/dotfiles/blob/main/.bin/bn) — branch notes
-- [`tat`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tat) — tmux session manager
-
-They're opinionated and built for my workflow, but the patterns generalize.
+The scripts are all in my [dotfiles repo](https://github.com/eduuh/dotfiles). Opinionated, built for my workflow, but the patterns generalize.
 
 The real win isn't the git trick. It's that every branch becomes a self-contained workspace with its own directory, terminal session, and notes. Context lives in the filesystem, not in your head.

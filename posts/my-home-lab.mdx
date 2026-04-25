@@ -118,11 +118,13 @@ If a node dies, the data is still available on the others. Off-cluster backups a
 
 The usual suspects for a media setup:
 
-- **[Jellyfin](https://jellyfin.org/):** Media streaming server (the open-source Plex alternative)
-- **[qBittorrent](https://www.qbittorrent.org/):** Torrent client with web UI
-- **[Sonarr](https://sonarr.tv/):** TV show automation
-- **[Radarr](https://radarr.video/):** Movie automation
-- **[Prowlarr](https://prowlarr.com/):** Indexer management
+| Service | Role |
+|---------|------|
+| [Jellyfin](https://jellyfin.org/) | Streaming (open-source Plex alternative) |
+| [qBittorrent](https://www.qbittorrent.org/) | Torrent client with web UI |
+| [Sonarr](https://sonarr.tv/) | TV show automation |
+| [Radarr](https://radarr.video/) | Movie automation |
+| [Prowlarr](https://prowlarr.com/) | Indexer management |
 
 All services share a 200GB volume with organized directories:
 
@@ -137,17 +139,21 @@ This enables hardlinks - when Sonarr moves a completed download, it's instant wi
 
 ### Productivity
 
-- **[Immich](https://immich.app/):** Self-hosted Google Photos replacement (100GB library)
-- **[Nextcloud](https://nextcloud.com/):** File sync and collaboration
-- **[Vaultwarden](https://github.com/dani-garcia/vaultwarden):** Bitwarden-compatible password manager
-- **[n8n](https://n8n.io/):** Workflow automation platform
-- **[Memos](https://usememos.com/):** Lightweight note-taking
+| Service | Role |
+|---------|------|
+| [Immich](https://immich.app/) | Self-hosted Google Photos replacement (100GB library) |
+| [Nextcloud](https://nextcloud.com/) | File sync and collaboration |
+| [Vaultwarden](https://github.com/dani-garcia/vaultwarden) | Bitwarden-compatible password manager |
+| [n8n](https://n8n.io/) | Workflow automation |
+| [Memos](https://usememos.com/) | Lightweight note-taking |
 
 ### Utilities
 
-- **[Glance](https://github.com/glanceapp/glance):** Dashboard with service monitoring
-- **[IT-Tools](https://github.com/CorentinTh/it-tools):** Developer utilities collection
-- **[Uptime Kuma](https://github.com/louislam/uptime-kuma):** Status monitoring
+| Service | Role |
+|---------|------|
+| [Glance](https://github.com/glanceapp/glance) | Dashboard with service monitoring |
+| [IT-Tools](https://github.com/CorentinTh/it-tools) | Developer utilities collection |
+| [Uptime Kuma](https://github.com/louislam/uptime-kuma) | Status monitoring |
 
 ### The dashboard
 

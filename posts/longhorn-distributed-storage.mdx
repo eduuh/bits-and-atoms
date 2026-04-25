@@ -1,8 +1,8 @@
 ---
-title: Longhorn — Distributed Storage for My Homelab
+title: 'Longhorn: distributed storage for my homelab'
 slug: longhorn-distributed-storage
 publishedAt: '2026-02-22'
-summary: How I use Longhorn for distributed block storage across my Kubernetes homelab — replication, disk tags, GitOps management, and what happens when a node disappears for nine days.
+summary: How I use Longhorn for distributed block storage across my Kubernetes homelab. Replication, disk tags, GitOps management, and what happens when a node disappears for nine days.
 tags:
   - Kubernetes
   - Storage
@@ -13,9 +13,9 @@ series:
   order: 3
 ---
 
-Storage is the hardest part of running a Kubernetes homelab. Stateless apps are easy — they crash, they restart, they reschedule. But databases, media libraries, and config files need somewhere persistent to live. And that somewhere needs to survive node failures, reboots, and the general chaos of running hardware in your living room.
+Storage is the hardest part of running a Kubernetes homelab. Stateless apps are easy: they crash, they restart, they reschedule. But databases, media libraries, and config files need somewhere persistent to live. And that somewhere needs to survive node failures, reboots, and the general chaos of running hardware in your living room.
 
-I use [Longhorn](https://longhorn.io/) for this. Here's everything I've learned after running it in production for several months — including the time a node went offline for nine days and I had to recover.
+I use [Longhorn](https://longhorn.io/) for this. Here's everything I've learned after running it in production for several months, including the time a node went offline for nine days and I had to recover.
 
 ## What is Longhorn?
 
@@ -23,11 +23,11 @@ Longhorn is a distributed block storage system for Kubernetes, originally built 
 
 It takes the local disks on your Kubernetes nodes and turns them into replicated block devices that pods consume as standard PVCs. You get:
 
-- **Replication** across nodes — configurable per volume
+- **Replication** across nodes, configurable per volume
 - **Snapshots** and incremental backups
-- **Thin provisioning** — volumes only consume space they actually use
+- **Thin provisioning:** volumes only consume the space they actually use
 - **A web UI** for managing volumes, replicas, and backups
-- **CSI-compliant** — works with standard Kubernetes storage primitives
+- **CSI-compliant:** works with standard Kubernetes storage primitives
 
 No special hardware, no SAN, no NFS. Just the disks already attached to your nodes.
 
@@ -77,7 +77,7 @@ One of Longhorn's best features is **disk tags** — they let you target specifi
 | Tag | Meaning |
 |-----|---------|
 | `nvme` | System NVMe disk |
-| `fast` | Same as `nvme` — for low-latency workloads |
+| `fast` | Same as `nvme`, for low-latency workloads |
 | `hdd` | Spinning disk |
 | `bulk` | Slow, high-capacity storage |
 
@@ -114,10 +114,10 @@ This is where things get interesting.
 
 One of my worker nodes (`intel-w-acemagic`) went offline unexpectedly. The kubelet stopped posting status, Kubernetes marked it `NotReady`, and within minutes the damage was visible:
 
-- **12 volumes degraded** — lost one replica, still serving from the surviving copy
-- **5 volumes faulted** — only replica was on the dead node, completely inaccessible
-- **20+ pods stuck Terminating** — waiting for the node to acknowledge their deletion
-- **Several pods in ContainerCreating** — trying to attach volumes that couldn't attach
+- **12 volumes degraded:** lost one replica, still serving from the surviving copy
+- **5 volumes faulted:** only replica was on the dead node, completely inaccessible
+- **20+ pods stuck Terminating:** waiting for the node to acknowledge their deletion
+- **Several pods in ContainerCreating:** trying to attach volumes that couldn't
 
 The degraded volumes kept running. Redundancy doing its job. The faulted volumes were the problem — pods depending on them sat in `ContainerCreating` indefinitely.
 

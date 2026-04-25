@@ -34,7 +34,7 @@ Each entry in `include` is a set of variables available throughout the job as `$
 
 **`fail-fast: false` matters.** The default is `true`, which means if one job fails, GitHub cancels the others. For builds, you usually want to see all failures at once, not just the first one.
 
-## OIDC — when it works and when it doesn't
+## OIDC: when it works and when it doesn't
 
 OIDC lets GitHub Actions authenticate to cloud providers without storing long-lived secrets. For AWS and GCP it's mostly painless. For Azure it mostly works, with one sharp edge.
 
