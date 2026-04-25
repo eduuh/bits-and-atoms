@@ -1,0 +1,276 @@
+---
+title: "One branch, one window: a tmux + worktree workflow"
+slug: one-branch-one-window
+publishedAt: '2026-04-25'
+summary: >-
+  A walkthrough of the terminal workflow I actually use every day. Bare repos,
+  git worktrees, tmux windows, and a floating nvim that follows the active
+  branch.
+tags:
+  - Workflow
+  - Tmux
+  - Git
+published: false
+---
+
+For years I worked the same way most people do: one clone of the repo, one branch checked out at a time, and the dance of `git stash`, `git checkout other-branch`, fix the urgent thing, `git checkout -`, `git stash pop`, hope nothing collided.
+
+It wasn't.
+
+I'd lose my place. The dev server I had running pointed at the wrong checkout. The editor still had files from the old branch open. Half-finished work would sit in a stash for a week. Sometimes I'd forget which branch I was on and commit to `main`.
+
+The fix turned out to be simple, and it's been the single biggest change to how I work in the terminal: **every branch is its own folder, and every folder is its own tmux window.**
+
+This post walks through how to set that up. The scripts I reference live in [github.com/eduuh/dotfiles](https://github.com/eduuh/dotfiles) — copy them, or read them as a starting point and write your own.
+
+## What you'll need
+
+A working terminal stack:
+
+- **tmux 3.3+** (for `display-popup` support)
+- **fzf** for the picker
+- **zoxide** for frecency-sorted projects (optional but nice)
+- **nvim** if you want the floating editor popup
+- **claude** if you want the AI pane
+
+On macOS: `brew install tmux fzf zoxide neovim`. On Linux: pick your package manager.
+
+## 1. The directory layout
+
+Two directories under `~/projects/`. That's the whole convention:
+
+```
+~/projects/
+├── bare/                      # bare clones, one per repo
+│   ├── dotfiles.git/
+│   └── personal-notes.git/
+└── worktree/                  # checkouts, one folder per branch
+    ├── dotfiles/
+    │   ├── main/
+    │   └── feat-some-thing/
+    └── personal-notes/
+        ├── main/
+        └── fix-trailing-comma/
+```
+
+Bare repos have no working tree — they're the "source of truth" for branches. Worktrees are the actual checkouts. Git has supported this since 2.5 (released 2015); it's not exotic.
+
+Make the directories:
+
+```bash
+mkdir -p ~/projects/bare ~/projects/worktree
+```
+
+## 2. Cloning as bare
+
+The setup script that handles this is [`wt`](https://github.com/eduuh/dotfiles/blob/main/.bin/wt). It does three things on `clone`: bare-clones the repo, sets up the fetch refspec to track all branches, and creates the `main` worktree automatically.
+
+The whole flow without the script is:
+
+```bash
+git clone --bare git@github.com:user/repo.git ~/projects/bare/repo.git
+cd ~/projects/bare/repo.git
+git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+git fetch origin
+git worktree add ~/projects/worktree/repo/main main
+```
+
+With `wt`:
+
+```bash
+wt clone git@github.com:user/repo.git
+# → ~/projects/bare/repo.git
+# → ~/projects/worktree/repo/main
+```
+
+The fetch refspec line is the one most people forget. Without it, `git fetch` only updates the current branch's remote ref, and you can't easily check out arbitrary branches into new worktrees.
+
+## 3. Adding a worktree
+
+Each branch gets its own folder:
+
+```bash
+wt add feat/something
+# → ~/projects/worktree/repo/feat-something
+```
+
+Slashes in branch names become dashes in directory names. The script also runs `git pull --ff-only` after creating the worktree, so it starts up to date.
+
+The raw git equivalent:
+
+```bash
+git --git-dir=~/projects/bare/repo.git \
+    worktree add ~/projects/worktree/repo/feat-something feat/something
+```
+
+Two branches checked out, two folders. No stashing. The dev server in folder A keeps pointing at folder A. The editor in folder B keeps the right files open. They don't know about each other.
+
+## 4. tmux: one session per repo, one window per worktree
+
+The rule:
+
+- **session name** = repo name (`dotfiles`, `personal-notes`)
+- **window name** = branch name with slashes replaced (`main`, `feat-something`)
+
+Switching from one branch to another is `prefix + ]`. Not `git checkout`. Not closing the editor. Not killing the dev server. Just the next window.
+
+The relevant tmux config (from [`.tmux.conf`](https://github.com/eduuh/dotfiles/blob/main/.tmux.conf)):
+
+```tmux
+# Prefix on Ctrl-Space (more comfortable than Ctrl-b)
+unbind C-b
+set -g prefix C-Space
+
+# Project picker
+bind C-o display-popup -E -w 80% -h 80% "$HOME/.bin/tmux/tat"
+
+# Worktree picker (open as window)
+bind o display-popup -E -w 60% -h 50% "$HOME/.bin/tmux/tmux-wt.sh"
+
+# Cycle windows
+bind -r ] next-window
+bind -n C-BSpace next-window  # no-prefix shortcut
+```
+
+The two interesting bindings are `prefix + C-o` (project picker) and `prefix + o` (worktree picker for the current session).
+
+## 5. The project picker (`tat`)
+
+[`tat`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tat) is the script behind `prefix + C-o`. It does four things:
+
+1. Lists every bare repo under `~/projects/bare/`.
+2. Sorts them by zoxide frecency (most-used first).
+3. Shows a preview of which sessions are open and what windows they have.
+4. Switches to the picked one — or creates the session if it doesn't exist yet.
+
+It also has a creation shortcut: type `repo/branch` for a project that doesn't have a window for that branch, hit enter, and it creates the worktree, opens the window, and drops you in. No confirmation prompt.
+
+The session-creation step uses [`tat-template.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tat-template.sh):
+
+```bash
+tmux new-session -d -s "$session_name" -n main -c "$start_path" \
+    "zsh -ic 'claude --dangerously-skip-permissions'"
+tmux split-window -h -t "${session_name}:main" -c "$start_path"
+```
+
+Two panes: Claude on the left (pane 0), shell on the right (pane 1).
+
+## 6. Worktrees as windows
+
+`prefix + o` opens [`tmux-wt.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tmux-wt.sh), a small fzf picker that lists every worktree for the current repo. Pick one, it opens as a new window in the current session — or focuses the existing window if there is one.
+
+If you type a branch name that doesn't exist as a worktree, hitting enter creates it from latest `main` and opens it. Same flow as `tat`, scoped to the current session.
+
+The window-creation function ([`tmux-lib.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tmux-lib.sh)):
+
+```bash
+open_worktree_window() {
+    local session="$1"
+    local window_name="$2"
+    local wt_path="$3"
+
+    tmux new-window -t "$session" -n "$window_name" -c "$wt_path" \
+        "zsh -ic 'claude --dangerously-skip-permissions'"
+    tmux split-window -h -t "${session}:${window_name}" -c "$wt_path"
+}
+```
+
+Same two-pane shape as the session template. Every worktree window has Claude in pane 0 and a shell in pane 1.
+
+## 7. Claude in pane 0 — and the bug that took an afternoon
+
+The first version of this used a shell alias:
+
+```bash
+# in .zshrc
+alias yolo='claude --dangerously-skip-permissions'
+```
+
+And the tmux scripts ran `tmux new-window "yolo"`. It looked clean.
+
+It didn't work.
+
+`tmux new-window` fires the command before zsh finishes sourcing `.zshrc`. The `yolo` alias wasn't defined yet when the keystrokes arrived, so the buffered input went into the void. About one window in three started with Claude; the rest started with an empty shell.
+
+The fix was to skip the alias entirely and pass the full command to `zsh -ic`:
+
+```bash
+tmux new-window -c "$wt_path" "zsh -ic 'claude --dangerously-skip-permissions'"
+```
+
+`-i` makes the shell interactive (so `.zshrc` still runs for environment setup); `-c '...'` passes the command directly. Pane 0 is now Claude's process. No alias lookup, no input-timing race.
+
+I learned most of this by breaking it first.
+
+## 8. The floating nvim that follows you
+
+Editor pane on the right is fine for `cat` and `ls`, but I don't like editing in a small pane. So `prefix + e` opens a full-screen nvim popup scoped to the current worktree.
+
+The trick is that there's only **one** nvim session running on the tmux server at any time. Switch worktrees, hit `prefix + e`, and the old nvim session gets killed and a new one spawns at the new worktree's cwd. No stale buffers from yesterday's branch.
+
+The script ([`tmux-edit.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tmux-edit.sh)):
+
+```bash
+hash=$(printf '%s' "$pane_path" | shasum | cut -c1-8)
+session="nvim-$hash"
+
+# If we're already in this nvim session → detach (close popup, keep nvim alive)
+[[ "$current_session" == "$session" ]] && exec tmux detach-client
+
+# Kill any older nvim-* sessions from other worktrees
+tmux list-sessions -F '#S' | while read -r s; do
+    [[ "$s" == nvim-* && "$s" != "$session" ]] && tmux kill-session -t "=$s"
+done
+
+# Spawn fresh if needed, then attach in popup
+tmux has-session -t "=$session" || tmux new-session -d -s "$session" -c "$pane_path" 'nvim .'
+tmux popup -d "$pane_path" -xC -yC -w 97% -h 97% -E "tmux attach -t '=$session'"
+```
+
+The hash of the path is just to make the session name unique per worktree. Pressing `prefix + e` again from inside the popup detaches — the popup closes, nvim keeps running. Press it once more from the same worktree, the same session reattaches with all your buffers intact.
+
+Bind it in `.tmux.conf`:
+
+```tmux
+bind e run-shell "$HOME/.bin/tmux/tmux-edit.sh"
+```
+
+## 9. Per-branch notes
+
+The last piece: when ten worktrees are open across three repos, you can't remember what each one was for.
+
+I keep a per-branch note at `~/projects/worktree/personal-notes/branch-notes/<repo>/<branch>/note.md`. A script called [`bn`](https://github.com/eduuh/dotfiles/blob/main/.bin/bn) creates, reads, and updates these. Goals, todos, blockers, decisions. One markdown file per branch.
+
+Common moves:
+
+```bash
+bn --cat                            # read the current branch's note
+bn add todo "fix flaky test"
+bn add decision "going with relay"
+bn done t3                          # check off todo #3
+bn summary                          # dashboard across all branches
+```
+
+Bind the popup view in tmux:
+
+```tmux
+bind n display-popup -E -w 97% -h 97% -d "#{pane_current_path}" "$HOME/.bin/tmux/tmux-note.sh"
+```
+
+The status bar shows the current branch and the number of open todos. When I open a window I haven't touched in three days, `prefix + n` brings up the note full-screen, and I'm back in the headspace I left in.
+
+## What it costs
+
+Disk. A lot of it, on a big repo with many branches. Each worktree is a full checkout. For my repos this is fine; for someone working on a 10GB monorepo it might not be.
+
+Discipline. The whole thing falls apart if you let `main` drift across worktrees. `wt fetch` and `bn refresh-all` are part of how I start the day.
+
+That's it. Everything else has been net-positive for two years.
+
+## What's open right now
+
+Eight windows in three sessions. `dotfiles` has the main worktree and one feature branch I'm cleaning up. `personal-notes` has main and a fix branch. `bits-and-atoms` has the `drafts` worktree where this post lives. None of them know the others exist. None of them care. Each one has its own Claude, its own nvim session if I open one, its own tests running if I started any. I move between them with `prefix + ]` and `prefix + C-o`.
+
+---
+
+*The dance of `git stash` and `git checkout` was the worst muscle memory I ever built. Took me longer than it should have to delete it.*
