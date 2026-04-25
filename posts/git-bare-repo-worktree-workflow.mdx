@@ -182,17 +182,11 @@ These run with the cwd set to the repo directory, so they work from anywhere. `b
 
 ## The daily flow
 
-Here's what a typical day looks like:
+Morning starts with `bn refresh-all` — all main branches pull and rebuild in parallel. When I'm picking up a feature, `wt add feat/new-thing` creates the worktree, `tat` opens a tmux session for it, `bn` initializes a note, and I write the goal plus first todos.
 
-**Morning**: `bn refresh-all` — all main branches pull and rebuild in parallel.
+**The piece that makes the rest work: I don't context-switch. I just switch tmux sessions.** The other branch is exactly where I left it. Same editor state, same terminal history, same uncommitted changes. When I switch back, `bn --cat` reminds me what I was doing.
 
-**Starting work on a feature**: `wt add feat/new-thing` creates the worktree. `tat` opens a tmux session for it. `bn` initializes a note. I write the goal and first todos.
-
-**Context switching**: I don't. I just switch tmux sessions. The other branch is exactly where I left it — same editor state, same terminal history, same uncommitted changes. When I switch back, `bn --cat` reminds me what I was doing.
-
-**End of day**: `bn todo` shows me everything that's open across all branches. I update notes, check off what's done, add anything I discovered.
-
-**Branch is done**: merge, `wt remove feat/new-thing`, `bn close`. Clean.
+End of day, `bn todo` shows me everything open across all branches. I update notes, check off what's done, add anything I discovered. When a branch is done: merge, `wt remove feat/new-thing`, `bn close`. Clean.
 
 ## The personal-notes repo
 
@@ -211,11 +205,11 @@ The `branch-notes` worktree is special — it's where `bn` reads and writes. Hav
 
 ## What I'd do differently
 
-**Start with the tooling**. I used raw `git worktree` commands for months before writing `wt`. That friction almost made me abandon the approach. The workflow only clicked once the tooling removed the ceremony.
+**Start with the tooling.** I used raw `git worktree` commands for months before writing `wt`. That friction almost made me abandon the approach. The workflow only clicked once the tooling removed the ceremony.
 
-**Fewer worktrees per repo**. Early on I'd create a worktree for every branch. Now I keep 2-3 active per repo and clean up aggressively. Disk space adds up when each worktree has its own `node_modules`.
+Fewer worktrees per repo. Early on I'd create one for every branch. Now I keep 2-3 active per repo and clean up aggressively — disk space adds up fast when each worktree has its own `node_modules`.
 
-**Branch notes from day one**. I added `bn` later and wished I'd had it from the start. The notes tell me *why* I made a decision better than any commit history can.
+Branch notes from day one. I added `bn` later and wished I'd had it from the start. The notes tell me *why* I made a decision better than any commit history can.
 
 ## Is this for you?
 

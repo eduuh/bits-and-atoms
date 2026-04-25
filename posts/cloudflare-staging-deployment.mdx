@@ -26,9 +26,7 @@ Deploying to production is easy. The hard part is having a staging environment t
 
 ## The problem
 
-I wanted:
-- **Production** at `eduuh.com`, public and indexed
-- **Staging** at `staging.eduuh.com`, private — for poking at changes before they go live
+Production lives at `eduuh.com` — public, indexed by search engines. Staging lives at `staging.eduuh.com`, private, for poking at changes before they go live.
 
 Cloudflare Pages handles the deployment, but both environments are public by default.<Footnote id={1}>Cloudflare Pages creates preview deployments for every branch and pull request, publicly accessible by default.</Footnote> I needed staging behind authentication without wiring anything into the app itself.
 
@@ -149,17 +147,11 @@ Cloudflare Access sits in front of the staging domain and requires auth before a
 
 ### 1. Create an Access application
 
-In Cloudflare Zero Trust dashboard:
-- Go to **Access** → **Applications**
-- Create a **Self-hosted** application
-- Set the domain to `staging.eduuh.com`
+In the Cloudflare Zero Trust dashboard, go to `Access` → `Applications`, create a `Self-hosted` application, and set the domain to `staging.eduuh.com`.
 
 ### 2. Configure identity provider
 
-For simplicity, I use **One-time PIN** (email OTP):
-- Go to **Settings** → **Authentication**
-- Add **One-time PIN** as a login method
-- No external OAuth setup required
+For simplicity, I use one-time PIN (email OTP). Go to `Settings` → `Authentication` and add `One-time PIN` as a login method. No external OAuth setup required.
 
 ### 3. Create an Access policy
 
@@ -291,13 +283,9 @@ Or use the "Edit Cloudflare Zero Trust" template and add DNS permissions on top.
 
 ## Gotchas
 
-**Empty policies block everyone.** If your Access app has no policies, the login page appears but authentication fails silently. Always create at least one allow policy.
+**Empty policies block everyone, silently.** If your Access app has no policies, the login page still appears but authentication fails with no obvious clue why. Always create at least one allow policy.
 
-**Identity provider must be linked.** Even if OTP is configured globally, you need to add it to `allowed_idps` on the application.
-
-**Token permissions are granular.** A Pages deployment token can't manage Access. Create separate tokens for each purpose.
-
-**Custom domains default to production.** Adding a custom domain via the Pages API doesn't automatically point it to a specific branch. Update the DNS CNAME to point to the branch alias instead.
+The identity provider has to be linked on the app, not just configured globally — add it to `allowed_idps` or OTP won't work even when it looks set up. Token permissions are granular too: a Pages deployment token can't manage Access, so separate tokens per purpose. And custom domains default to production. Adding a custom domain via the Pages API doesn't automatically point it to a specific branch; update the DNS CNAME to the branch alias.
 
 ## Cost
 
@@ -308,10 +296,7 @@ The whole setup is free:
 
 ## What's next
 
-A few things I want to add:
-- **Service tokens** for CI to hit staging without email auth
-- **Bypass rules** for health check endpoints
-- **Terraform** for Access config as code
+A few things I want to add: service tokens for CI to hit staging without email auth, bypass rules for health check endpoints, and Terraform for the Access config as code.
 
 The final shape:
 

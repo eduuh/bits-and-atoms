@@ -21,13 +21,7 @@ I use [Longhorn](https://longhorn.io/) for this. Here's everything I've learned 
 
 Longhorn is a distributed block storage system for Kubernetes, originally built by Rancher. It's now a CNCF incubating project.
 
-It takes the local disks on your Kubernetes nodes and turns them into replicated block devices that pods consume as standard PVCs. You get:
-
-- **Replication** across nodes, configurable per volume
-- **Snapshots** and incremental backups
-- **Thin provisioning:** volumes only consume the space they actually use
-- **A web UI** for managing volumes, replicas, and backups
-- **CSI-compliant:** works with standard Kubernetes storage primitives
+It takes the local disks on your Kubernetes nodes and turns them into replicated block devices that pods consume as standard PVCs. Replication is configurable per volume. You get snapshots and incremental backups, thin provisioning so volumes only consume the space they actually use, a web UI for managing volumes, replicas, and backups, and CSI-compliance so it plugs into the standard Kubernetes storage primitives.
 
 No special hardware, no SAN, no NFS. Just the disks already attached to your nodes.
 
@@ -114,10 +108,10 @@ This is where things get interesting.
 
 One of my worker nodes (`intel-w-acemagic`) went offline unexpectedly. The kubelet stopped posting status, Kubernetes marked it `NotReady`, and within minutes the damage was visible:
 
-- **12 volumes degraded:** lost one replica, still serving from the surviving copy
-- **5 volumes faulted:** only replica was on the dead node, completely inaccessible
-- **20+ pods stuck Terminating:** waiting for the node to acknowledge their deletion
-- **Several pods in ContainerCreating:** trying to attach volumes that couldn't
+- 12 volumes degraded: lost one replica, still serving from the surviving copy
+- 5 volumes faulted: only replica was on the dead node, completely inaccessible
+- 20+ pods stuck Terminating, waiting for the node to acknowledge their deletion
+- A handful of pods in ContainerCreating, trying to attach volumes that couldn't
 
 The degraded volumes kept running. Redundancy doing its job. The faulted volumes were the problem — pods depending on them sat in `ContainerCreating` indefinitely.
 
@@ -128,7 +122,7 @@ pvc-365487d4-...   attached   degraded     amd-w-minipc  ← serving, but expose
 pvc-55510f17-...   attached   healthy      amd-w-minipc  ← fully replicated
 ```
 
-The node had been offline for **nine days** by the time I noticed. Running without redundancy on half my volumes for nine days, and I didn't know.
+The node had been offline for nine days by the time I noticed. **Nine days without redundancy on half my volumes, and I didn't know.**
 
 Once the node came back online, Longhorn recovered automatically:
 
@@ -140,11 +134,11 @@ The data was intact. Nothing lost. That's the value of replication — even with
 
 ## Lessons from the outage
 
-**Single-replica volumes are a trap.** I had five volumes with only one copy of their data. Any workload that matters should have at least two replicas. One replica means one hardware failure = data inaccessible.
+**Single-replica volumes are a trap.** I had five volumes with only one copy of their data. Any workload that matters should have at least two replicas — one replica means one hardware failure equals data inaccessible.
 
-**Watch for degraded volumes.** The real risk isn't a volume going faulted — it's a degraded volume (one replica surviving) surviving long enough for the *second* node to have trouble. Set up Prometheus alerts for degraded volumes. Don't wait nine days to find out.
+The real risk isn't a volume going faulted. It's a degraded volume (one replica surviving) staying that way long enough for the *second* node to have trouble. Prometheus alerts on degraded volumes. Don't wait nine days to find out.
 
-**Terminating pods block volume reattachment.** When a node dies, its pods get stuck `Terminating`. For StatefulSets with Longhorn volumes, the old pod needs to be fully gone before Longhorn can safely attach elsewhere. Force-deleting (`--force --grace-period=0`) works, but understand what you're doing.
+Terminating pods block volume reattachment. When a node dies, its pods get stuck `Terminating`, and StatefulSets with Longhorn volumes need the old pod fully gone before Longhorn can safely attach elsewhere. Force-deleting (`--force --grace-period=0`) works if you understand what you're doing.
 
 ## Removing a disk safely
 
@@ -195,21 +189,17 @@ For true disaster recovery, Longhorn can push backups to S3-compatible storage o
 
 ## What works well
 
-**Zero-config scaling.** Add a new node, configure its Longhorn `Node` resource, and replicas start landing there automatically.
+**The UI is genuinely good.** You see replica placement at a glance, trigger manual snapshots, and watch rebuild progress in real time. Most Kubernetes storage tooling is miserable to operate. Longhorn isn't.
 
-**The UI is genuinely good.** You can see replica placement at a glance, trigger manual snapshots, and watch rebuild progress in real-time. Most Kubernetes storage tooling is miserable to operate. Longhorn isn't.
-
-**Online volume expansion.** Need more space on a PVC? Increase the size in the manifest, Flux applies it, Longhorn resizes online. No pod restart required for most workloads.
-
-**Works great on Talos.** The immutable OS model pairs well with Longhorn's declarative approach. Disk management is config, not commands.
+Scaling is zero-config: add a new node, configure its Longhorn `Node` resource, and replicas start landing there automatically. Online volume expansion just works — bump the size in the manifest, Flux applies it, Longhorn resizes without a pod restart for most workloads. And it pairs well with Talos. The immutable OS model fits Longhorn's declarative approach. Disk management is config, not commands.
 
 ## What to watch out for
 
-**Rebuild I/O.** When a node rejoins after a long absence, Longhorn rebuilds all missing replicas simultaneously. On spinning disks this saturates I/O. NVMe handles it much better.
+**Config drift is silent.** If your Longhorn node object gets out of sync with your GitOps manifest (auto-discovered disks are the usual culprit), Flux will overwrite the live state on the next sync. Keep manifests current.
 
-**Storage overhead.** Longhorn uses disk space for metadata and snapshot data beyond what your volumes actually contain. Budget for this on smaller disks.
+Rebuild I/O is real. When a node rejoins after a long absence, Longhorn rebuilds all missing replicas simultaneously, which saturates spinning disks. NVMe handles it much better.
 
-**Config drift is silent.** If your Longhorn node object gets out of sync with your GitOps manifest (e.g., auto-discovered disks), Flux will overwrite the live state on the next sync. Keep your manifests current.
+Storage overhead is real too. Longhorn uses disk space for metadata and snapshot data beyond what your volumes actually contain. Budget for it on smaller disks.
 
 ## The bigger picture
 

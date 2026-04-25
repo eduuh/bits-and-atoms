@@ -26,14 +26,14 @@ This trips me up often enough that I want a single reference I can point to.
 
 ## The difference
 
-**BSD `dd`** (macOS, FreeBSD) accepts either case for the binary-multiple suffixes:
+BSD `dd` (macOS, FreeBSD) accepts either case for the binary-multiple suffixes:
 
 ```bash
 bs=1m   # 1 MiB — works
 bs=1M   # 1 MiB — also works
 ```
 
-**GNU `dd`** (most Linux distros via coreutils) is strict:
+GNU `dd` (most Linux distros via coreutils) is strict:
 
 ```bash
 bs=1M   # 1 MiB — works
