@@ -35,7 +35,7 @@ You'll need:
 - A wired network connection during install
 - Five to ten minutes
 
-## Step 1 — download the ISO
+## Step 1: download the ISO
 
 Grab the latest ISO from the [Proxmox downloads page](https://www.proxmox.com/en/downloads/proxmox-virtual-environment/iso). I went with the current stable release.
 
@@ -48,7 +48,7 @@ Verify the SHA256 checksum before flashing — it takes thirty seconds and rules
 
 Compare against the checksum listed on the download page.
 
-## Step 2 — write the ISO to USB
+## Step 2: write the ISO to USB
 
 On macOS I use `dd` directly. First find the USB device:
 
@@ -71,7 +71,7 @@ A note on the block size: I use `bs=1M` (uppercase) because it works on both BSD
 
 On Linux the same command works against `/dev/sdX` (no `r` prefix needed). On Windows, [Rufus](https://rufus.ie/) in DD mode is the easiest option.
 
-## Step 3 — boot the installer
+## Step 3: boot the installer
 
 Plug the USB into the target machine and boot from it. On the Glovary I had to press `Del` to enter the BIOS, enable virtualization, and set the USB as the first boot device.
 
@@ -79,12 +79,12 @@ The Proxmox installer boots into a graphical menu. Pick **Install Proxmox VE (Gr
 
 Walk through the prompts:
 
-1. **End User License Agreement (EULA)** — read it, scroll to the bottom, and click **I agree**. You can't proceed without accepting.
-2. **Target disk** — I use the internal NVMe. The default ext4 filesystem is fine for a single-disk setup. For anything with redundancy, pick ZFS and add mirrored disks.
-3. **Country / timezone / keyboard** — set these correctly now; changing them later is a pain.
-4. **Root password and admin email** — use a real email, Proxmox sends alerts here.
-5. **Network config** — see below. This is the step that deserves the most attention on a multi-NIC firewall box.
-6. **Hostname (FQDN)** — I went with `proxmox.home.arpa`.
+1. **EULA:** read it, scroll to the bottom, click **I agree**. You can't proceed without accepting.
+2. **Target disk:** I use the internal NVMe. The default ext4 filesystem is fine for a single-disk setup. For anything with redundancy, pick ZFS and add mirrored disks.
+3. **Country, timezone, keyboard:** set these correctly now; changing them later is a pain.
+4. **Root password and admin email:** use a real email — Proxmox sends alerts here.
+5. **Network config:** see below. This is the step that deserves the most attention on a multi-NIC firewall box.
+6. **Hostname (FQDN):** I went with `proxmox.home.arpa`.
 
 ### Picking the management NIC on a 4-port firewall box
 
@@ -94,23 +94,23 @@ The installer lists them as `eth0` through `eth3` (or in newer versions, predict
 
 | Port | Role | Network | Subnet |
 |------|------|---------|--------|
-| `eth0` | **WAN** — uplink to ISP | public | from ISP |
-| `eth1` | **Office LAN** — wired desks + work WiFi AP | trusted | `10.10.2.0/24` |
-| `eth2` | **IoT & Guest** — untrusted devices + guest AP | isolated | `10.10.3.0/24` |
-| `eth3` | **LAN** — internal homelab + Proxmox mgmt | infra | `10.10.1.0/24` |
+| `eth0` | **WAN**, uplink to ISP | public | from ISP |
+| `eth1` | **Office LAN**, wired desks + work WiFi AP | trusted | `10.10.2.0/24` |
+| `eth2` | **IoT & Guest**, untrusted devices + guest AP | isolated | `10.10.3.0/24` |
+| `eth3` | **LAN**, internal homelab + Proxmox mgmt | infra | `10.10.1.0/24` |
 
 A few things worth calling out about this layout:
 
-- **WiFi for work** piggybacks on the Office LAN port — one AP plugged into `eth1` broadcasting a single work SSID on the `10.10.2.0/24` subnet. No VLAN magic needed.
-- **IoT and Guest share a port** (combined on `10.10.3.0/24`). A second cheap AP on `eth2` with AP isolation enabled covers both the guest SSID and smart-home devices. They can't reach each other or the LAN — that's all enforced by firewall rules in OPNsense.
+- **WiFi for work** piggybacks on the Office LAN port. One AP plugged into `eth1` broadcasting a single work SSID on the `10.10.2.0/24` subnet. No VLAN magic needed.
+- **IoT and Guest share a port** (combined on `10.10.3.0/24`). A second cheap AP on `eth2` with AP isolation enabled covers both the guest SSID and smart-home devices. They can't reach each other or the LAN. Firewall rules in OPNsense enforce that.
 - **Only three internal networks fit** on a 4-port box when you want physical segregation. If I ever want Office and WiFi on separate segments, or Guest truly isolated from IoT, I'll need to either add a managed switch with VLANs or get a bigger firewall appliance. Today, three is plenty.
 
-So on my Glovary I picked **eth3** — the rightmost port — as Proxmox's management interface. The other three ports (`eth0`–`eth2`) are left untouched by the host so I can pass them straight through to the OPNsense VM.
+On my Glovary, I picked **eth3** (the rightmost port) as Proxmox's management interface. The other three ports stay untouched so I can pass them straight through to the OPNsense VM.
 
 A few notes on the choice itself:
 
 - **Pick a port that's physically cabled and reachable.** The installer tests the link before letting you continue. If the cable isn't plugged in, the option won't appear.
-- **Label them all.** Four identical 2.5GbE ports look the same. I stuck a label next to each one — WAN / OFFICE / IOT / LAN — before starting the install.
+- **Label them all.** Four identical 2.5GbE ports look the same. I labelled each one (WAN / OFFICE / IOT / LAN) before starting the install.
 - **Don't pick the WAN port for management.** Once Proxmox owns that interface, passing it through to OPNsense gets messy. Keep WAN and mgmt on separate NICs.
 
 With eth3 as management, I set:
@@ -119,7 +119,7 @@ With eth3 as management, I set:
 - **Gateway:** `10.10.1.1` (OPNsense, once it's running)
 - **DNS:** `10.10.1.20` (Pi-hole, to be deployed) with `1.1.1.1` as a fallback
 
-The actual OPNsense configuration — assigning each port as its own interface, firewall rules between segments, DHCP per network — lives in the next post in this series. Proxmox only needs to know about the LAN (`10.10.1.0/24`) since that's where the host itself lives.
+The actual OPNsense configuration (assigning each port as its own interface, firewall rules between segments, DHCP per network) lives in the next post. Proxmox only needs to know about the LAN (`10.10.1.0/24`) since that's where the host itself lives.
 
 ### Static vs dynamic on `10.10.1.0/24` (the LAN segment)
 
@@ -155,7 +155,7 @@ In OPNsense I'll configure the DHCP server to only hand out `.100 – .199` and 
 
 Confirm the summary, then let it install. Takes two or three minutes on NVMe.
 
-## Step 4 — first boot
+## Step 4: first boot
 
 Once installed, remove the USB and reboot. You'll land on a console showing the web UI URL:
 
@@ -167,7 +167,7 @@ Hit that from another machine. Your browser will complain about the self-signed 
 
 ![Proxmox web UI login](/images/proxmox-login-placeholder.jpg)
 
-## Step 5 — drop the enterprise repos
+## Step 5: drop the enterprise repos
 
 Fresh installs default to the enterprise repository, which requires a paid subscription. Without it, `apt update` throws a warning and you can't pull updates. Swap in the community repo.
 
@@ -201,7 +201,7 @@ apt update && apt dist-upgrade -y
 The no-subscription repo is free but doesn't get the same QA testing as enterprise. For a homelab it's perfectly fine. For production, pay for a subscription.
 </Callout>
 
-## Step 6 — suppress the subscription nag
+## Step 6: suppress the subscription nag
 
 Every time you log into the web UI, Proxmox pops up a "No valid subscription" dialog. It's cosmetic but annoying. The standard fix is a one-liner that patches the JS file:
 
@@ -213,7 +213,7 @@ systemctl restart pveproxy.service
 
 This gets reverted on every Proxmox update, so I keep the command in a script. Open the web UI in an incognito window to confirm the dialog is gone.
 
-## Step 7 — create your first VM
+## Step 7: create your first VM
 
 Now for the fun part. In the web UI, click **Create VM** and fill in the wizard. The defaults are sensible for Linux guests. A few things I always change:
 
@@ -238,8 +238,8 @@ For the Kubernetes control plane VM I gave it 4 vCPUs, 4 GB RAM, and 32 GB of di
 
 With Proxmox running, the Glovary now hosts:
 
-- **OPNsense VM** — 2 vCPU, 2 GB RAM, passthrough access to the four 2.5GbE NICs
-- **Kubernetes control plane VM** — 4 vCPU, 4 GB RAM, running Talos Linux
+- **OPNsense VM:** 2 vCPU, 2 GB RAM, passthrough access to the four 2.5GbE NICs
+- **Kubernetes control plane VM:** 4 vCPU, 4 GB RAM, running Talos Linux
 
 The beauty of this setup is that OPNsense and the control plane are completely isolated. A problem with one doesn't take down the other, and I can snapshot either VM before a risky change.
 

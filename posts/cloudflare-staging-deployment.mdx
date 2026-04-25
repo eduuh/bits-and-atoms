@@ -27,17 +27,14 @@ Deploying to production is easy. The hard part is having a staging environment t
 ## The problem
 
 I wanted:
-- **Production** at `eduuh.com` — public, indexed
-- **Staging** at `staging.eduuh.com` — private, for poking at changes before they go live
+- **Production** at `eduuh.com`, public and indexed
+- **Staging** at `staging.eduuh.com`, private — for poking at changes before they go live
 
 Cloudflare Pages handles the deployment, but both environments are public by default.<Footnote id={1}>Cloudflare Pages creates preview deployments for every branch and pull request, publicly accessible by default.</Footnote> I needed staging behind authentication without wiring anything into the app itself.
 
 ## The stack
 
-- **Cloudflare Pages** — static site hosting with automatic deployments
-- **Cloudflare Access** — Zero Trust authentication layer
-- **GitHub Actions** — CI/CD pipeline
-- **Email OTP** — simple auth without managing passwords
+Cloudflare Pages handles static site hosting and deployments. Cloudflare Access sits in front of staging as a Zero Trust auth layer. GitHub Actions runs the build. Email OTP keeps it password-free.
 
 ## The deployment flow
 
@@ -286,15 +283,11 @@ After entering your email, you receive an OTP code:
 
 ## API token permissions
 
-For the GitHub Actions deployment token:
-- **Cloudflare Pages** — Edit
+The GitHub Actions deployment token only needs `Cloudflare Pages: Edit`.
 
-For managing Access and DNS via API:
-- **Access: Apps and Policies** — Edit
-- **Access: Organizations, Identity Providers, and Groups** — Edit
-- **Zone — DNS** — Edit (for updating CNAME records)
+For managing Access and DNS via API you need three more: `Access: Apps and Policies (Edit)`, `Access: Organizations, Identity Providers, and Groups (Edit)`, and `Zone: DNS (Edit)` for the CNAME updates.
 
-Or use the **"Edit Cloudflare Zero Trust"** template and add DNS permissions on top.
+Or use the "Edit Cloudflare Zero Trust" template and add DNS permissions on top.
 
 ## Gotchas
 
@@ -309,9 +302,9 @@ Or use the **"Edit Cloudflare Zero Trust"** template and add DNS permissions on 
 ## Cost
 
 The whole setup is free:
-- Cloudflare Pages — free tier covers most sites
-- Cloudflare Access — free for up to 50 users
-- GitHub Actions — free for public repos
+- Cloudflare Pages, free tier covers most sites
+- Cloudflare Access, free for up to 50 users
+- GitHub Actions, free for public repos
 
 ## What's next
 
