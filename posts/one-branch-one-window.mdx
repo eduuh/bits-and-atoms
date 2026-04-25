@@ -25,19 +25,13 @@ The scripts I reference live in [github.com/eduuh/dotfiles](https://github.com/e
 
 ## What you'll need
 
-A working terminal stack:
-
-- **tmux 3.3+** (for `display-popup` support)
-- **fzf** for the picker
-- **zoxide** for frecency-sorted projects (optional but nice)
-- **nvim** if you want the floating editor popup
-- **claude** if you want the AI pane
+You'll need tmux 3.3+ (for `display-popup`), fzf, and zoxide. The optional pieces are nvim (for the floating editor popup) and claude (for the AI pane).
 
 On macOS: `brew install tmux fzf zoxide neovim`. On Linux: pick your package manager.
 
 ## 1. The directory layout
 
-Two directories under `~/projects/`. That's the whole convention:
+Two directories under `~/projects/`:
 
 ```
 ~/projects/
@@ -107,10 +101,7 @@ Two branches checked out, two folders. No stashing. The dev server in folder A k
 
 ## 4. tmux: one session per repo, one window per worktree
 
-The rule:
-
-- **session name** = repo name (`dotfiles`, `personal-notes`)
-- **window name** = branch name with slashes replaced (`main`, `feat-something`)
+Session names match repo names (`dotfiles`, `personal-notes`). Window names match branches with slashes replaced (`main`, `feat-something`).
 
 Switching from one branch to another is `prefix + ]`. Not `git checkout`. Not closing the editor. Not killing the dev server. Just the next window.
 
@@ -177,7 +168,7 @@ open_worktree_window() {
 
 Same two-pane shape as the session template. Every worktree window has Claude in pane 0 and a shell in pane 1.
 
-## 7. Claude in pane 0 — and the bug that took an afternoon
+## 7. Claude in pane 0
 
 The first version of this used a shell alias:
 
@@ -206,7 +197,7 @@ I learned most of this by breaking it first.
 
 Editor pane on the right is fine for `cat` and `ls`, but I don't like editing in a small pane. So `prefix + e` opens a full-screen nvim popup scoped to the current worktree.
 
-The trick is that there's only **one** nvim session running on the tmux server at any time. Switch worktrees, hit `prefix + e`, and the old nvim session gets killed and a new one spawns at the new worktree's cwd. No stale buffers from yesterday's branch.
+Only one nvim session runs on the tmux server at any time. Switch worktrees, hit `prefix + e`, and the old session gets killed and a new one spawns at the new worktree's cwd. No stale buffers from yesterday's branch.
 
 The script ([`tmux-edit.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tmux-edit.sh)):
 
