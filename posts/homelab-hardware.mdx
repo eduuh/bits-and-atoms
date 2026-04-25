@@ -64,13 +64,7 @@ The extra RAM is useful for Longhorn caching and storage operations.
 
 ## Why mini PCs?
 
-**Power.** The whole cluster idles at 50W. Less than one traditional server, and cheap enough to leave on 24/7.
-
-**Noise.** These sit in my kitchen. Silence matters.
-
-**Footprint.** Three mini PCs take up less space than a single rack unit.
-
-**Cost.** A shelf of mini PCs is a fraction of enterprise hardware for the same aggregate compute.
+**The whole cluster idles at 50W.** Less than one traditional server, cheap enough to leave on 24/7. Three boxes take up less space than a single rack unit. They're quiet enough to live in my kitchen — silence matters more than I expected. And a shelf of mini PCs is a fraction of enterprise hardware for the same aggregate compute.
 
 ## Network topology
 
@@ -109,11 +103,7 @@ Everything on the software side (Talos Linux, Kubernetes, Flux, Longhorn, Promet
 
 ## What I'd change
 
-**More RAM on the control plane.** 8 GB works, 16 GB would breathe easier with a few more services layered in.
-
-**Matching NICs.** Consistent 2.5GbE across every node simplifies the mental model.
-
-**NVMe everywhere.** A couple of nodes still run SATA SSDs. etcd and database workloads notice the difference.
+**More RAM on the control plane.** 8 GB works today, 16 GB would breathe easier as services pile up. Matching NICs would simplify the mental model — consistent 2.5GbE across every node. NVMe everywhere too: a couple of boxes still run SATA SSDs, and etcd plus database workloads notice the difference.
 
 ## Next steps
 
@@ -123,13 +113,7 @@ I have an old Dell laptop (Intel Core i7, 8th gen) that would be great for Jelly
 
 ## Future expansion
 
-Each node has room to grow on disk:
-
-- **AMD mini PC:** empty SSD slot, room for a 4TB SSD
-- **Dell laptop:** empty SSD slot, room for a 4TB SSD
-- **Glovary firewall:** room for one more SSD, also up to 4TB
-
-That's up to 12TB of expansion without adding new nodes. More disk on the boxes I already own, rather than more boxes.
+**Each node has room for one more 4TB SSD** — the AMD mini PC, the Dell laptop, and the Glovary firewall all have a free slot. That's 12TB of expansion without adding any new boxes. More disk on the hardware I already own, rather than more hardware.
 
 The catch is cost. 2.5" SSDs at 4TB aren't cheap. For now the two Samsung 980 NVMe drives cover what I need.
 

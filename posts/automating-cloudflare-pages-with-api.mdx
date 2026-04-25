@@ -20,17 +20,11 @@ I needed to set up staging and production domains for my blog on Cloudflare Page
 
 ## What I wanted
 
-Pretty straightforward:
-- **`eduuh.com`** → `blog-2026` main branch
-- **`staging.eduuh.com`** → `blog-2026` staging branch
+Pretty straightforward: `eduuh.com` should serve the `main` branch of `blog-2026`, and `staging.eduuh.com` should serve the `staging` branch.
 
 ## Getting API access
 
-Grabbed an API token from [the Cloudflare dashboard](https://dash.cloudflare.com/profile/api-tokens). You need:
-
-- **Account > Cloudflare Pages > Edit**
-- **Account > Account Settings > Read**
-- **Zone > DNS > Edit** (if you want to mess with DNS too)
+Grabbed an API token from [the Cloudflare dashboard](https://dash.cloudflare.com/profile/api-tokens). You need `Account > Cloudflare Pages > Edit`, `Account > Account Settings > Read`, and (if you want to script DNS too) `Zone > DNS > Edit`.
 
 <Callout type="warning" title="Don't be that guy">
   Keep the token out of git. I stuck mine in `.env` and added it to `.gitignore`.

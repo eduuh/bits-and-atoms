@@ -39,12 +39,9 @@ Idles at 50W total. The electricity bill barely notices.
 
 Instead of traditional Linux distributions, I run [Talos Linux](https://www.talos.dev/) - an immutable, API-managed operating system designed specifically for Kubernetes.
 
-Why Talos?
+**Immutable, by design.** No SSH, no shell. The entire OS is read-only and managed via API — minimal attack surface, only essential components. Configuration is defined in YAML and applied via `talosctl`. Upgrades roll out automatically without downtime.
 
-- **Immutable:** No SSH, no shell. The entire OS is read-only and managed via API
-- **Secure:** Minimal attack surface with only essential components
-- **Declarative:** Configuration is defined in YAML and applied via `talosctl`
-- **Automatic updates:** Rolling upgrades without downtime
+That sounds annoying until you live with it. Then it's calm. Nothing to forget to patch, nothing to half-configure.
 
 Current versions:
 - Talos: v1.11.5
@@ -104,13 +101,9 @@ Pi-hole blocks ads and tracking at the DNS level, while CoreDNS resolves interna
 
 ## Storage: Longhorn
 
-My rule for the homelab is simple: I care about getting data back, not about staying up. Services can fall over. Data can't disappear. [Longhorn](https://longhorn.io/) fits that — distributed block storage across the cluster:
+My rule for the homelab is simple: **I care about getting data back, not about staying up.** Services can fall over. Data can't disappear. [Longhorn](https://longhorn.io/) fits that — distributed block storage across the cluster, with 2-3 replicas of each volume spread over nodes, automated snapshots, and both ReadWriteOnce and ReadWriteMany modes.
 
-- **Replication:** 2-3 copies of each volume spread across nodes
-- **Snapshots:** Automated backups
-- **Access modes:** Both ReadWriteOnce and ReadWriteMany supported
-
-If a node dies, the data is still available on the others. Off-cluster backups are next on my list — I haven't spent enough time with Longhorn's recurring backup jobs yet.
+If a node dies, the data is still available on the others. Off-cluster backups are next on my list. I haven't spent enough time with Longhorn's recurring backup jobs yet.
 
 ## What I self-host
 
@@ -176,13 +169,9 @@ The [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/
 
 ### Custom exporters
 
-- **OPNsense Exporter:** Pulls metrics from my firewall (CPU, memory, interface traffic, WAN latency)
-- **Speedtest Tracker:** Hourly internet speed tests with historical data
+The OPNsense exporter pulls metrics from the firewall: CPU, memory, interface traffic, WAN latency. Speedtest Tracker runs hourly internet checks and keeps the history.
 
-I have custom Grafana dashboards showing:
-- Internet bandwidth usage
-- Download/upload speeds over time
-- Per-interface traffic on the firewall
+Custom Grafana dashboards on top: internet bandwidth usage, up- and down-speeds over time, per-interface traffic on the firewall.
 
 ## The service map
 
@@ -205,25 +194,21 @@ I have custom Grafana dashboards showing:
 
 ## Lessons learned
 
-**Start simple, iterate.** My first attempt was over-engineered with Ansible, Terraform, and multiple VMs. The current setup with Talos and Flux is far simpler and more reliable.
+The single principle that shaped everything else: **data-recovery over reliability.** It's just me and my wife using these services. If something goes down, nobody pages me. What matters is that data can be recovered. That mindset makes every other infrastructure decision easier.
 
-**GitOps is worth it.** Having everything in Git means I can rebuild the entire cluster from scratch. When things break, `git log` shows exactly what changed.
+Start simple, then iterate. My first attempt was over-engineered with Ansible, Terraform, and multiple VMs. The current Talos-and-Flux setup is far simpler and more reliable.
 
-**Shared storage matters.** The media stack only works smoothly because all services see the same filesystem. Planning it upfront saves pain later.
+GitOps is worth it. Everything in Git means I can rebuild the entire cluster from scratch, and when things break, `git log` shows exactly what changed.
 
-**Monitoring from day one.** Adding observability after the fact is painful. Bake it in from the start.
+Shared storage matters. The media stack only works smoothly because all services see the same filesystem — plan that upfront and skip a lot of pain later.
 
-**Data-recovery over reliability.** It's just me and my wife using these services. If something goes down, nobody pages me. What matters is that data can be recovered. That mindset makes every other infrastructure decision easier.
+Monitoring from day one. Adding observability after the fact is painful. Bake it in.
 
 ## Hardware roadmap
 
-The current storage setup works, but there's room to grow:
+The current storage setup works, but there's room to grow. A dedicated NAS for large-scale storage and off-cluster backups is the next big move. I've also got two 4TB 2.5" SSDs sitting in a drawer for expanding cluster storage, plus a 1TB drive earmarked for OS-level operations.
 
-- **NAS:** A dedicated NAS for large-scale storage and off-cluster backups
-- **SSD upgrades:** 2x 4TB 2.5" SSDs available for expanding cluster storage
-- **OS storage:** 1TB dedicated for OS-level operations
-- **Jellyfin node:** An old Dell laptop with Intel Core i7 (8th gen) would be ideal for Jellyfin - plenty of compute for hardware transcoding
-- **Repurpose intel-w-acemagic:** This node has low compute power, so I'm planning to replace it with the laptop and find a new role for it
+For Jellyfin, an old Dell laptop with an 8th-gen Intel Core i7 would be ideal — plenty of compute for hardware transcoding. The plan is to swap it in for `intel-w-acemagic`, which has the lowest compute of the three nodes, and find a new role for the ACEMAGIC.
 
 ![Dell laptop internals showing the motherboard, 42Wh battery, and upgrade potential](/images/20260114_192856.jpg)
 
