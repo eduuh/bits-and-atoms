@@ -3,30 +3,32 @@ title: The Only Kubernetes Knowledge I Need
 slug: kubernetes-knowledge-i-need
 publishedAt: '2026-03-03'
 summary: >-
-  Kubernetes is complex, but for a home lab, you only need a subset of concepts.
-  Here is my pragmatic guide.
+  Kubernetes is huge. For a home lab you only need a small slice of it. This is
+  the slice I actually use.
 tags:
   - Infrastructure
 published: false
 series:
   title: Home Lab
-  order: 3
+  order: 10
 ---
 
-Kubernetes (K8s) has a reputation for being over-engineered for small setups. But once you get past the learning curve, the declarative nature of it is unbeatable.
+Kubernetes has a reputation for being too much for a home lab. It is. The trick is to ignore the bits you don't need.
 
-## K3s: The Lightweight Distro
+## K3s: the lightweight distro
 
-I use K3s, a lightweight Kubernetes distribution built for IoT and Edge computing. It's perfect for a home lab.
+I run [K3s](https://k3s.io/). Single binary, sane defaults, low memory footprint. It was built for edge and IoT, which is more or less what a closet cluster is.
 
-## The Core Concepts
+## The core concepts
 
-I don't need to be a K8s expert. I just focus on:
-- **Deployments:** Keeping my apps running.
-- **Services:** Exposing apps internally.
-- **Ingress:** Exposing apps to the web (via Traefik or Nginx).
-- **PVCs:** Persistent Volume Claims for storage.
+Four things cover almost everything I do: Deployments keep apps running, Services expose them inside the cluster, Ingress exposes them to the web (via Traefik or nginx), and PVCs hand them persistent storage. I haven't needed Operators or admission controllers yet, and I'm in no rush.
 
 ## GitOps with ArgoCD
 
-The real magic happens with GitOps. I commit my K8s manifests to a Git repo, and ArgoCD automatically syncs the state of my cluster. If I break something, I just revert the commit.
+The real win is GitOps. Manifests live in a git repo. [ArgoCD](https://argo-cd.readthedocs.io/) watches the repo and reconciles the cluster to match. If I break something, I revert the commit and the cluster heals itself.
+
+That sounds annoying until you live with it. Then it's calm. The cluster is whatever's in `main`.
+
+---
+
+*Half the Kubernetes books on the shelf are written for the half I'm not using.*

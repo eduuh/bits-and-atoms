@@ -11,15 +11,15 @@ series:
   order: 1
 ---
 
-Before diving into software and services, let's talk hardware. My homelab runs on three mini PCs, chosen for their balance of performance, power efficiency, and price.
+Before getting into software, the hardware. My homelab is three mini PCs. I picked them for the same reason most people do: small, quiet, cheap, and they sip power.
 
-## The Firewall and Control Plane: Glovary
+## Firewall and control plane: Glovary
 
 ![Glovary back panel with 4 ethernet ports](/images/Screenshot%202026-01-13%20at%2023.59.48.png)
 
 ![Glovary front panel](/images/Screenshot%202026-01-14%20at%2000.00.18.png)
 
-This Glovary appliance serves double duty. It has four Intel i226-V 2.5GbE NICs, making it perfect for running OPNsense as my firewall. On the same box, I run Proxmox to host a VM that acts as my Kubernetes control plane (`intel-c-firewall`).
+This Glovary box does two jobs. It has four 2.5GbE Intel i226-V NICs, which is exactly what OPNsense wants. On the same machine, Proxmox runs a VM that acts as the Kubernetes control plane (`intel-c-firewall`).
 
 **Specs:**
 - CPU: Intel N100 (4 cores)
@@ -28,9 +28,9 @@ This Glovary appliance serves double duty. It has four Intel i226-V 2.5GbE NICs,
 - Network: 4x 2.5GbE Intel i226-V
 - Cost: 42,000 KSH
 
-The N100 is surprisingly capable for this workload. It handles firewall duties and the Kubernetes API server without breaking a sweat.
+The N100 keeps surprising me. Firewall duties plus the Kubernetes API, and it isn't even warm.
 
-## The Primary Worker: AMD Mini PC
+## Primary worker: AMD mini PC
 
 ![AMD mini PC](/images/Screenshot%202026-01-14%20at%2001.20.23.png)
 
@@ -38,7 +38,7 @@ The N100 is surprisingly capable for this workload. It handles firewall duties a
 
 ![Back panel ports](/images/Screenshot%202026-01-14%20at%2001.20.01.png)
 
-This AMD-based mini PC (`amd-w-minipc`) is the workhorse of the cluster. With 16 cores, it handles most of the application workloads.
+This AMD mini PC (`amd-w-minipc`) does most of the actual work. Sixteen cores, and most of my apps run on it.
 
 **Specs:**
 - CPU: AMD Ryzen (16 cores)
@@ -47,13 +47,13 @@ This AMD-based mini PC (`amd-w-minipc`) is the workhorse of the cluster. With 16
 - Network: 2.5GbE
 - Cost: 40,000 KSH
 
-The 2.5GbE port is essential for keeping up with storage traffic between nodes.
+The 2.5GbE port matters here. Storage chatter between nodes adds up fast.
 
-## The Storage Worker: ACEMAGIC
+## Storage worker: ACEMAGIC
 
 ![ACEMAGIC mini PC with display](/images/Screenshot%202026-01-14%20at%2001.18.46.png)
 
-The ACEMAGIC (`intel-w-acemagic`) has a neat built-in display showing power consumption and temperatures. It currently handles storage-heavy workloads.
+The ACEMAGIC (`intel-w-acemagic`) has a tiny display on the front showing power draw and temps. It's a small thing and I love it. This node handles the storage-heavy workloads.
 
 **Specs:**
 - CPU: Intel (4 cores)
@@ -62,23 +62,21 @@ The ACEMAGIC (`intel-w-acemagic`) has a neat built-in display showing power cons
 - Network: 2.5GbE
 - Cost: 25,000 KSH
 
-The higher RAM makes it good for caching and storage operations with Longhorn.
+More RAM helps Longhorn with caching and storage work.
 
-## Why Mini PCs?
+## Why mini PCs
 
-A few reasons:
+Power. The whole cluster idles around 50W. Less than one regular server, and the electricity bill barely flinches.
 
-**Power efficiency.** The entire cluster runs on about 50W idle. That's less than a single traditional server and means I can run 24/7 without worrying about the electricity bill.
+Quiet. These live in my kitchen. Silence isn't optional.
 
-**Quiet operation.** These sit in my kitchen. Silence matters.
+Size. Three of them take up less space than a single rack-mount machine would.
 
-**Compact footprint.** Three mini PCs take up less space than a single rack-mount server.
+Price. The whole cluster came to about 174,000 KSH. Try that with enterprise gear.
 
-**Affordable.** The entire cluster cost around 174,000 KSH. Compare that to enterprise hardware.
+## Network
 
-## Network Topology
-
-All three nodes connect to a 5-port 2.5GbE unmanaged switch. The Glovary firewall handles routing between VLANs and provides internet access. For WiFi, I use 2 Google Nest WiFi Pro units in bridge mode, connected to the switch.
+All three nodes plug into a 5-port 2.5GbE unmanaged switch. The Glovary handles routing and internet. For WiFi I'm using two Google Nest WiFi Pro units in bridge mode, also on the switch.
 
 ```
 Internet → Glovary (OPNsense) → Managed Switch → Worker Nodes
@@ -86,17 +84,15 @@ Internet → Glovary (OPNsense) → Managed Switch → Worker Nodes
          Proxmox VM (Control Plane)
 ```
 
-## Power Consumption
+## Power use
 
-I measured with a smart plug:
-- Idle: ~50W total
-- Under load: ~80-100W
+I checked with a smart plug. Idle sits around 50W. Under load it's 80 to 100W.
 
-That's roughly 36 kWh per month at idle. At Kenya's electricity rate of 26 KSH per unit, that's about 936 KSH per month to run the entire cluster 24/7.
+That works out to about 36 kWh a month at idle. At 26 KSH per unit in Kenya, that's roughly 936 KSH a month to keep the whole cluster on, all the time.
 
-## Total Cost
+## Total cost
 
-Here's the full breakdown:
+Full breakdown:
 
 | Component | Cost (KSH) |
 |-----------|-----------|
@@ -109,41 +105,39 @@ Here's the full breakdown:
 | 2x 75ft Cat 8 ethernet cables | 5,200 |
 | 2x Google Nest WiFi Pro (second hand) | 15,000 |
 | Shipping (all items) | 12,000 |
-| **Hardware Total** | **173,910** |
+| **Hardware Total** | 173,910 |
 | Software (all open source) | 0 |
 
-For about 174,000 KSH, I have a fully functional Kubernetes cluster with distributed storage, running 24/7. The entire software stack - Talos Linux, Kubernetes, Flux, Longhorn, Prometheus, and all the self-hosted apps - is open source and free.
+For about 174,000 KSH I have a working Kubernetes cluster with distributed storage, running all day every day. The whole software stack (Talos, Kubernetes, Flux, Longhorn, Prometheus, all the self-hosted apps) is open source. None of it costs me anything.
 
-**Lesson learned:** Shipping from overseas is cheaper than buying locally. The only downside is the wait - but the savings are worth it.
+One thing I learned: shipping from overseas was cheaper than buying locally. You wait a bit longer. You save a lot.
 
-## What I'd Change
+## What I'd change
 
-Looking back, a few things I'd do differently:
+A few things I'd do differently if I started today.
 
-**More RAM on the control plane.** 8 GB works but 16 GB would be more comfortable for running additional services.
+More RAM on the control plane. 8 GB works, but 16 GB would breathe easier.
 
-**Matching NICs.** Having consistent 2.5GbE across all nodes simplifies networking.
+Matching NICs across all three nodes. Mixed speeds make networking annoying for no good reason.
 
-**NVMe everywhere.** Some nodes still have SATA SSDs. NVMe makes a noticeable difference for etcd and database workloads.
+NVMe everywhere. A couple of nodes still have SATA SSDs. Etcd and databases notice.
 
-## Next Steps
+## What's next
 
-I have an old Dell laptop with an Intel Core i7 (8th gen) that would be great for Jellyfin transcoding. Planning to add it to the cluster and repurpose the ACEMAGIC for something else.
+There's an old Dell laptop with an 8th-gen Intel i7 sitting on my desk. It's perfect for Jellyfin transcoding. The plan is to add it to the cluster and find a new role for the ACEMAGIC.
 
 ![Dell laptop internals ready for homelab duty](/images/20260114_192856.jpg)
 
-## Future Expansion
+## Room to grow
 
-Each node has room for vertical scaling through additional storage:
+Every node has an empty SSD slot. The AMD mini PC, the Dell laptop, and the Glovary each have room for a 4TB drive. That's up to 12TB more storage without buying another machine.
 
-- **AMD Mini PC:** Has an empty SSD slot - could add a 4TB SSD
-- **Dell Laptop:** Has an empty SSD slot - could add a 4TB SSD
-- **Glovary Firewall:** Can support an additional SSD - could add a 4TB SSD
+The catch is price. 4TB 2.5" SSDs aren't cheap. For now the two Samsung 980 NVMe drives are handling things fine.
 
-That's up to 12TB of potential storage expansion without adding new nodes. This is vertical scaling - increasing capacity on existing hardware rather than horizontal scaling (adding more machines).
+The plan is to max out the existing nodes before I think about a dedicated NAS. 12TB should keep me happy for a while.
 
-The challenge is cost. 2.5" SSDs at 4TB capacity are expensive. For now, the 2x Samsung 980 NVMe drives handle my storage needs.
+For the full software stack, see [My Home Lab](/blog/my-home-lab). The GitOps repo lives at [github.com/eduuh/kube-homelab](https://github.com/eduuh/kube-homelab).
 
-The plan is to max out vertical scaling before considering a dedicated NAS. With 12TB of potential expansion across existing nodes, that should cover my needs for a while.
+---
 
-Check out [My Home Lab](/blog/my-home-lab) for the full software stack and [the GitOps repository](https://github.com/eduuh/kube-homelab) running on this hardware.
+*Three boxes, 50W, less than 174,000 KSH, sitting on top of a kitchen cabinet. The internet keeps trying to sell me a rack.*

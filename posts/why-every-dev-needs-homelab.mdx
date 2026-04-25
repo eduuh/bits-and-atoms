@@ -3,32 +3,36 @@ title: Why Every Developer Should Have a Home Lab
 slug: why-every-dev-needs-homelab
 publishedAt: '2026-05-10'
 summary: >-
-  It’s not just about hoarding data. A home lab is the best career accelerator
-  for a software engineer.
+  Hoarding data is the side effect. The real reason is that running your own
+  infrastructure makes you a better software engineer.
 tags:
   - Infrastructure
   - Lifestyle
 published: false
-series:
-  title: Home Lab
-  order: 8
 ---
 
-I often get asked why I run servers in my closet. "Why not just use AWS?"
+"Why not just use AWS?" is the question I get every time someone notices the closet.
 
-## Full Stack Infrastructure
+Fair question. The answer isn't cost. It's the layer of the stack you stop thinking about when someone else runs the servers.
 
-As developers, we often live in the application layer. We write code and push it. But we rarely see what happens underneath.
-- How does DNS actually work?
-- What happens when a disk fails?
-- How do you configure a firewall from scratch?
+## Full stack infrastructure
 
-## The Sandbox
+As a developer you live in the application layer. You write code, push it, and something else makes it answer requests. DNS, disks, firewalls — they're abstractions that someone else owns.
 
-A home lab gives you a safe place to break things.
-- Want to learn Kubernetes? Spin up a cluster.
-- Want to try a new database? Deploy it in a container.
+A home lab takes the floor away. You're the one who has to make a disk failure not lose your photos. You're the one writing the firewall rule. You're the one debugging why [Pi-hole](https://pi-hole.net/) stopped resolving at 2am.
 
-## Career Impact
+## The sandbox
 
-The skills I learned in my lab—Linux administration, networking, Docker, security—have saved me countless times in my day job. It turns you from a "coder" into a "systems thinker."
+Want to learn Kubernetes? Spin up a cluster on hardware you can hard-reboot. Want to try a new database? Run it without a credit card form in the way.
+
+The freedom matters. Every cloud experiment has a tab open in the back of your head counting dollars. A home lab gives you the room to try the bad idea, watch it fail, and learn the actual shape of the failure.
+
+## Career impact
+
+The Linux, networking, Docker, and security work I did in my closet has saved me at the day job more times than I can count. I learned most of it by breaking it first.
+
+It turns you from someone who writes code into someone who can reason about the box that runs it.
+
+---
+
+*The closet is the cheapest classroom I've ever paid the electricity bill for.*

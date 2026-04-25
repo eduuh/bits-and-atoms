@@ -16,27 +16,24 @@ series:
   order: 1
 ---
 
-I needed to set up staging and production domains for my blog on Cloudflare Pages. You can do this through the dashboard but I don't know, I just didn't feel like clicking around. The API is right there.
+I needed staging and production domains for my blog on Cloudflare Pages. You can do this in the dashboard, but I just didn't feel like clicking around. The API was right there.
 
-## What I Wanted
+## What I wanted
 
-Pretty straightforward:
-- **`eduuh.com`** → `blog-2026` main branch
-- **`staging.eduuh.com`** → `blog-2026` staging branch
+Two domains, one project:
 
-## Getting API Access
+- `eduuh.com` → `blog-2026` main branch
+- `staging.eduuh.com` → `blog-2026` staging branch
 
-Grabbed an API token from [the Cloudflare dashboard](https://dash.cloudflare.com/profile/api-tokens). You need:
+## Getting API access
 
-- **Account > Cloudflare Pages > Edit**
-- **Account > Account Settings > Read**
-- **Zone > DNS > Edit** (if you want to mess with DNS too)
+Grabbed an API token from [the Cloudflare dashboard](https://dash.cloudflare.com/profile/api-tokens). The scopes you need are `Account > Cloudflare Pages > Edit`, `Account > Account Settings > Read`, and (if you also want DNS) `Zone > DNS > Edit`.
 
 <Callout type="warning" title="Don't be that guy">
   Keep the token out of git. I stuck mine in `.env` and added it to `.gitignore`.
 </Callout>
 
-## Adding the Domains
+## Adding the domains
 
 Attaching custom domains to a Pages project:
 
@@ -56,11 +53,11 @@ curl -X POST \
   --data '{"name":"staging.eduuh.com"}'
 ```
 
-## Making Staging Actually Point to Staging
+## Pointing staging at the staging branch
 
-Here's the part that tripped me up. Both domains were now attached, but they both pointed to the `main` branch. Not super useful for a staging environment.
+Here's where I got stuck. Both domains were now attached, but both were serving `main`. Not what you want from a staging URL.
 
-You have to explicitly tell Cloudflare which branch a domain should serve:
+You have to tell Cloudflare which branch each domain should serve:
 
 ```bash
 curl -X PATCH \
@@ -70,11 +67,11 @@ curl -X PATCH \
   --data '{"branch":"staging"}'
 ```
 
-This was the key bit I couldn't figure out from the dashboard. The API made it obvious.
+That was the bit I couldn't figure out in the UI. The API just says it.
 
-## DNS While I'm At It
+## DNS while I'm here
 
-My domain's already on Cloudflare, so I figured I'd set up the DNS records via API too:
+The domain's already on Cloudflare, so I set up DNS through the API too:
 
 ```bash
 # Root domain
@@ -102,9 +99,9 @@ curl -X POST \
   }'
 ```
 
-Both point to the same `pages.dev` subdomain - Cloudflare routes to the right branch based on the domain config we set earlier.
+Both records point at the same `pages.dev` subdomain. Cloudflare picks the right branch based on the domain config from earlier.
 
-## That's It
+## That's it
 
 | Domain | Branch |
 |--------|--------|
@@ -113,8 +110,8 @@ Both point to the same `pages.dev` subdomain - Cloudflare routes to the right br
 
 Push to `main`, production updates. Push to `staging`, staging updates.
 
-The `PATCH` to map a specific branch to a domain was the thing I couldn't figure out how to do in the dashboard. Might be possible, I didn't look that hard. But the API made it obvious.
+The `PATCH` to pin a branch to a domain was the bit I couldn't find in the dashboard. Maybe it's there somewhere. The API was clearer.
 
 ---
 
-*Claude figured out the APIs for me - saved me from digging through docs and clicking around the dashboard.*
+*Claude pulled up the right API calls so I didn't have to dig through docs.*

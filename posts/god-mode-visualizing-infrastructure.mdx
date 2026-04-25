@@ -10,24 +10,27 @@ tags:
 published: false
 series:
   title: Home Lab
-  order: 6
+  order: 12
 ---
 
-If you can't measure it, you can't manage it. In my home lab, I take this to the extreme.
+You can't fix what you can't see. The homelab takes this further than most production setups I've worked on.
 
-## The Stack
+## The stack
 
-- **Prometheus:** The time-series database that scrapes metrics from my targets.
-- **Grafana:** The beautiful visualization layer.
-- **Node Exporter:** Running on every Linux box to report system stats.
+[Prometheus](https://prometheus.io/) scrapes metrics from every target on a tight interval. [Grafana](https://grafana.com/) sits on top and turns that pile of numbers into something I can glance at. [Node Exporter](https://github.com/prometheus/node_exporter) runs on every Linux box and reports the system stats up to Prometheus.
 
-## What I Monitor
+Three pieces, no surprises. The combination has been the default for years for a reason.
 
-1.  **Server Health:** CPU, RAM, Disk usage across my Proxmox cluster.
-2.  **Network Traffic:** Real-time bandwidth usage from OPNsense.
-3.  **Power:** Energy consumption from my smart plugs and backup inverter.
-4.  **Environment:** Temperature and humidity in the server closet.
+## What I monitor
 
-## The "God Mode" Dashboard
+Server health is the obvious one: CPU, RAM, and disk usage across the Proxmox cluster. Network traffic comes from OPNsense — bandwidth per VLAN, packet loss, what's hammering the uplink. Power draw is pulled from smart plugs and the backup inverter. Closet temperature and humidity are read by a small ESP32 stuck to the wall.
 
-I built a single "God Mode" dashboard that gives me a red/green status for every service I run. It's the first thing I check in the morning.
+## The "God Mode" dashboard
+
+One dashboard, red or green per service. It's the first thing I check with coffee in the morning. If anything is yellow I see it before I'm awake enough to ignore it.
+
+The point isn't to look at graphs all day. It's that the one time something is wrong, the answer is on a screen I already know how to read.
+
+---
+
+*The dashboard you don't open every day is the one that won't tell you anything when you need it.*

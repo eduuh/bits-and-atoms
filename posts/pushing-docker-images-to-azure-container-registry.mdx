@@ -14,13 +14,13 @@ tags:
   - DevOps
 ---
 
-I needed to build 4 Docker images from a monorepo and push them to Azure Container Registry on every push to main. Sounds simple. It wasn't.
+I needed four Docker images from a monorepo, pushed to Azure Container Registry on every commit to main. Sounded simple. It wasn't.
 
-## What I Was Going For
+## What I wanted
 
-Four services, four images, all pushed to `wira360.azurecr.io` automatically. Tags with the git SHA for traceability, plus `latest` for convenience. No stored secrets — OIDC for auth.
+Four services, four images, all going to `wira360.azurecr.io` on autopilot. Tag each one with the git SHA so I can trace it back, plus `latest` for convenience. And no stored secrets — OIDC was supposed to handle auth.
 
-## The Workflow (Final Version)
+## The workflow that actually shipped
 
 ```yaml
 name: Build and Push to ACR
@@ -74,25 +74,22 @@ jobs:
           cache-to: type=registry,ref=wira360.azurecr.io/\${{ matrix.service }}:cache,mode=max
 ```
 
-`fail-fast: false` means a slow build in one job won't cancel the others. The registry cache means repeat builds only transfer changed layers.
+`fail-fast: false` keeps a slow build from cancelling the others. The registry cache means repeat runs only ship the layers that changed.
 
-## One-Time Azure Setup
+## One-time Azure setup
 
-Before this can run you need an ACR. I already had one at `wira360.azurecr.io`. Enable admin credentials:
+You need an ACR first. Mine was already at `wira360.azurecr.io`. Turn on admin credentials:
 
 ```bash
 az acr update --name wira360 --admin-enabled true
 az acr credential show --name wira360
 ```
 
-That gives you a username and password. Store them as GitHub secrets:
+That gives you a username and password. Save them as GitHub secrets named `ACR_USERNAME` and `ACR_PASSWORD`.
 
-- `ACR_USERNAME`
-- `ACR_PASSWORD`
+## The OIDC rabbit hole
 
-## The OIDC Rabbit Hole
-
-I originally wanted keyless auth — no stored secrets, just OIDC. The setup looks clean: create an app registration, add a federated credential pointing at your repo, grant it `AcrPush`, and use `azure/login@v2` in the workflow.
+I really wanted keyless auth. No stored secrets, just OIDC. The setup looks clean. App registration, federated credential pointed at the repo, `AcrPush` role assigned, `azure/login@v2` in the workflow.
 
 ```bash
 az ad app create --display-name "github-tracker-acr"
@@ -115,23 +112,23 @@ az role assignment create --assignee <appId> --role AcrPush --scope $ACR_ID
   The audience must be `api://AzureADTokenExchange`. If you use `api://AzureADTokenEndpoint` (which looks plausible), OIDC silently fails with `AADSTS700212`.
 </Callout>
 
-OIDC login worked. But the Docker push kept failing with `insufficient_scope: authorization failed`.
+OIDC login itself worked. The Docker push kept failing with `insufficient_scope: authorization failed`.
 
-The problem: after `azure/login@v2` authenticates you, the next step is getting Docker credentials for the registry. The obvious approach is `az acr login --name wira360`, which writes credentials to the default Docker context. Except buildx runs in its own container driver and doesn't inherit those credentials.
+Here's what's going on. After `azure/login@v2` signs you in, the next step is getting Docker credentials for the registry. The obvious move is `az acr login --name wira360`, which writes credentials to the default Docker context. Buildx runs in its own container driver, though, and doesn't see them.
 
-So you try `az acr login --expose-token`, get a short-lived access token, and pass it to `docker login`. Closer, but still fails. The reason: buildx's OAuth challenge flow with ACR expects either basic auth credentials or a refresh token. A bare access token doesn't satisfy the challenge, so ACR returns `insufficient_scope`.
+So you switch to `az acr login --expose-token`, grab a short-lived access token, and hand it to `docker login`. Closer, but still no. Buildx's OAuth challenge with ACR expects either basic auth or a refresh token. A bare access token doesn't pass the challenge, and ACR comes back with `insufficient_scope`.
 
-There are ways to make OIDC work with buildx (passing the token through buildx secrets, using a different driver), but they add complexity for marginal benefit. Admin credentials stored as GitHub secrets are static, they work, and that's enough.
+There are ways to make OIDC work with buildx (pass the token through buildx secrets, swap drivers) but they trade a lot of complexity for very little. Admin credentials in GitHub secrets are boring and they work. Boring won.
 
-## Verifying It Worked
+## Checking it worked
 
 ```bash
 az acr repository list --name wira360
 az acr repository show-tags --name wira360 --repository sokoni-api
 ```
 
-You should see your git SHAs listed as tags.
+Your git SHAs should be sitting there as tags.
 
 ---
 
-*OIDC is elegant in theory. Admin credentials are boring and they work.*
+*OIDC is elegant in theory. Admin credentials are boring, and that's the point.*

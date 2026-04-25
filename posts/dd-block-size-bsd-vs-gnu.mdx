@@ -1,0 +1,71 @@
+---
+title: "The dd Gotcha: BSD vs GNU on macOS"
+slug: dd-block-size-bsd-vs-gnu
+publishedAt: '2026-04-18'
+summary: Two different dd implementations can share the same prompt on macOS, and their block-size parsers don't agree.
+tags:
+  - Linux
+published: false
+---
+
+I was flashing a [Proxmox](https://www.proxmox.com/en/proxmox-virtual-environment/overview) install USB the other day and hit a surprisingly sharp edge:
+
+```bash
+~/Downloads ❯ sudo dd if=./proxmox-ve_9.1-1.iso of=/dev/rdisk4 bs=1m status=progress
+Password:
+dd: invalid number: '1m'
+```
+
+`bs=1m` has been my muscle memory for years on macOS. I ran it again thinking I'd fat-fingered something. Same error. So what changed?
+
+## Two different `dd`s
+
+There are two `dd` implementations floating around. BSD `dd` is the one that ships with macOS at `/bin/dd`. GNU `dd` is the one in `coreutils`, the default on most Linux distros and installable on macOS via Homebrew.
+
+They look identical. They behave almost identically. But their block size parsers disagree on one small thing:
+
+| Flavor | Accepts | Rejects |
+|--------|---------|---------|
+| BSD    | `bs=1m` | `bs=1M` (as a suffix) |
+| GNU    | `bs=1M` | `bs=1m` |
+
+Same flag name, different parsers.
+
+## How it bit me
+
+My `$PATH` had Homebrew's `coreutils` ahead of `/usr/bin`, so `dd` resolved to GNU `dd`. My fingers typed the BSD form. GNU refused the argument. Switching to the GNU-style suffix:
+
+```bash
+~/Downloads ❯ sudo dd if=./proxmox-ve_9.1-1.iso of=/dev/rdisk4 bs=1M status=progress
+1801453568 bytes (1.8 GB, 1.7 GiB) copied, 30 s, 60.0 MB/s
+1747+1 records in
+1747+1 records out
+1831886848 bytes (1.8 GB, 1.7 GiB) copied, 30.7518 s, 59.6 MB/s
+```
+
+1.8 GB in 30 seconds at ~60 MB/s. The drive was fine. The image was fine. I was just talking to a different `dd` than I thought.
+
+## How to tell which one you have
+
+```bash
+which dd
+dd --version 2>&1 | head -1
+```
+
+If `--version` prints a GNU coreutils banner, you're on GNU. If it errors out, you're on BSD.
+
+If you want to force the macOS native one regardless of `$PATH`:
+
+```bash
+/bin/dd if=image.iso of=/dev/rdisk4 bs=1m status=progress
+```
+
+## The lesson
+
+The real surprise wasn't the syntax. It was that `dd` on my Mac wasn't the `dd` I assumed it was. Homebrew had quietly replaced it years ago when I installed `coreutils` for something unrelated.
+
+If you want portable block sizes across both, skip the suffixes and use raw bytes: `bs=1048576`. Ugly, but it works everywhere.
+
+---
+
+*Every alias is a tiny bet that future-you will remember which binary you actually meant.*
