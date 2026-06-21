@@ -1,0 +1,125 @@
+---
+title: Teaching tmux What "Done" Means
+slug: teaching-tmux-what-done-means
+publishedAt: '2026-06-21'
+summary: >-
+  I run builds, tests, and AI agents across a dozen worktrees at once. tmux could
+  show me all of them — it just couldn't tell me which ones finished. So I taught it.
+tags:
+  - Workflow
+  - Tooling
+  - Shell
+  - Engineering
+published: false
+status: draft
+tldr: >-
+  tmux already knows when a window goes quiet (monitor-silence). Hook that to a
+  status-bar badge and "quiet = done" turns every window into a job tracker. Add a
+  key to spawn an AI agent in a worktree and a roll-up of everything in flight, and
+  tmux becomes a parallel-work cockpit instead of a window manager you babysit.
+keyTakeaways:
+  - Sessions are projects, windows are worktrees — one window per unit of work
+  - monitor-silence + an alert-silence hook badges a window ✓ the moment its job goes quiet
+  - One key spawns a Claude Code agent in a worktree, auto-watched for completion
+  - A cockpit popup rolls up every in-flight window across all sessions
+  - Silence is a heuristic, so completion-watching is opt-in per window, not global
+series:
+  title: The Workflow
+  order: 2
+---
+
+I usually have a dozen things running at once. A release build in one worktree. A test suite in another. Two or three Claude Code agents chewing through separate branches. A long `terraform plan`. They're all in tmux, each in its own window, exactly where I left them.
+
+The problem was never *seeing* them. tmux shows me every window. The problem was knowing which ones were **done**. So I'd tab through them one at a time — is this build finished? is that agent waiting on me? — and the act of checking is the exact context-switch the parallel setup was supposed to avoid.
+
+tmux already had the answer. I just hadn't asked it the right question.
+
+## The shape of the thing
+
+This builds on a setup I've [written about before](/blog/git-bare-repo-worktree-workflow): bare repos and worktrees, with a small CLI toolchain (`wt`, `bn`, `tat`) around them. The one rule that matters here:
+
+**Sessions are projects. Windows are worktrees.** One window per branch, per unit of work. My branch-notes tool, `bn`, decorates each window in the status line — a red `!` if there's a blocker, a dim count of open todos.
+
+<Terminal lines={[
+  { prompt: true, text: "tmux ls" },
+  "bn: 4 windows (attached)",
+  "tracker: 3 windows",
+  "kube-homelab: 2 windows",
+  "planning: 1 windows",
+]} />
+
+So the layout was already a map of everything in flight. What it lacked was state. A window looks identical whether the thing inside it is grinding away or finished an hour ago.
+
+## The question tmux could already answer
+
+Here's the part I'd been missing: **a finished job stops printing.** A build that's done, a test run that's passed, an agent that's waiting for your next instruction — they all go quiet. And tmux has watched for quiet since forever. It's called `monitor-silence`.
+
+Normally `monitor-silence` is used to nag you about idle windows. I wanted the opposite reading of the same signal: quiet means the work is *done*, so badge it.
+
+I bound a key to mark a window as "watch this for completion," and hooked tmux's `alert-silence` event to a script that paints a green ✓ on it:
+
+```tmux
+# prefix m — watch this window; tell me when it goes quiet
+bind m if -F '#{monitor-silence}' \
+  'setw monitor-silence 0 ; display "watch off"' \
+  'setw monitor-silence 12 ; display "watching — quiet 12s = done"'
+
+# when a watched window goes quiet, badge it and stop watching
+set-hook -g alert-silence 'run-shell "tmux-done-badge.sh #{hook_window}"'
+```
+
+The script sets a per-window option, `@bn_done`, which the status line already knows how to render — same machinery as the blocker and todo badges:
+
+```tmux
+setw -g window-status-format \
+  "#I #W#{?@bn_done,#[fg=green] ✓,}"
+```
+
+Now I kick off a build, hit <Kbd>prefix</Kbd> <Kbd>m</Kbd>, and go do something else. Twelve seconds after the build stops printing, the window grows a ✓ in the status bar. I never tabbed to it. I just glanced.
+
+<Callout type="tip">
+  The twelve seconds is deliberate. It's long enough to ride out the pauses inside
+  a chatty build, short enough that "done" feels immediate. Tune it to your jobs.
+</Callout>
+
+## Pointing it at agents
+
+Once "quiet = done" worked for builds, it worked for AI agents for free — because an agent finishing its turn is the purest version of going quiet. It prints, it thinks, it prints, and then it stops and waits for you. That stop is the signal.
+
+So I gave it a key. <Kbd>prefix</Kbd> <Kbd>A</Kbd> spawns a Claude Code agent in a new window rooted at the current worktree, names it after the branch, and turns the completion-watch on automatically:
+
+```bash
+win=$(tmux new-window -P -F '#{window_id}' -c "$pane_path" -n "⛏ $branch" "$claude_bin")
+tmux set-window-option -t "$win" monitor-silence 12
+```
+
+I fire off three of them across three branches and walk away. The status bar tells me which one finished first. No polling, no "is it done yet" — the window with the ✓ is the one that needs me.
+
+## A cockpit, not a window manager
+
+The last piece is a roll-up. <Kbd>prefix</Kbd> <Kbd>S</Kbd> opens a popup that scans *every* session and shows what's in flight — what's still working, what's done — over the top of my cross-branch `bn` summary:
+
+<Terminal lines={[
+  "In-flight windows",
+  "  … working  bn:3   ⛏ feat-mcp-server   (quiet 12s = done)",
+  "  ✓ done      bn:4   ⛏ fix-status-line",
+  "  … working  tracker:2  release-build",
+  "",
+  "bn summary",
+  "  bn/feat-mcp-server   [ ] wire up the resolver",
+  "  tracker/release      [ ] cut the changelog",
+]} />
+
+That popup is the whole idea in one view. tmux stops being a thing I tab through and becomes a board I check. The parallel work was always there; now its *state* is too.
+
+## The honest caveat
+
+Silence is a heuristic, not a fact. An idle shell is also silent. A build that pauses for ninety seconds on one slow step looks "done" for those ninety seconds if you set the threshold too low. This is exactly why completion-watching is **opt-in per window** — I never turn `monitor-silence` on globally, because then every idle pane would scream "done" at me. You arm the windows that are actually running a job. The agent spawner arms itself.
+
+It's a heuristic that happens to fit how the work behaves: the things I want to be notified about are precisely the things that print while busy and stop when finished. Builds, tests, agents. For anything that doesn't fit that shape, the badge would lie — so I don't watch those.
+
+## Why this was worth it
+
+None of this is much code. A keybinding, a hook, a couple of small scripts reusing a status-line badge I already had. The leverage isn't in the lines; it's in the reframing.
+
+tmux was already a parallel-work cockpit. It held all my work, side by side, persistent across reboots. The only thing missing was a definition of "done" — and tmux had been quietly measuring it the whole time. I just had to wire the signal to a badge and stop tabbing around to ask a question my terminal could already answer.
