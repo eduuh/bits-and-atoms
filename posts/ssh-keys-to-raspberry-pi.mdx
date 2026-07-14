@@ -1,0 +1,161 @@
+---
+title: SSH Keys to a Raspberry Pi (When Everything Fights You)
+slug: ssh-keys-to-raspberry-pi
+publishedAt: '2026-04-28'
+summary: >-
+  Setting up passwordless SSH to a Pi sounds like a five-minute job. Here is
+  what actually happens and how to get through it.
+tags:
+  - Homelab
+  - Linux
+  - SSH
+  - Raspberry Pi
+published: false
+---
+
+Passwordless SSH to a Raspberry Pi is supposed to be a five-minute job. Generate a key, copy it over, done. In practice you end up back at the password prompt twice, debugging the same root cause from two different angles.
+
+Here's the full picture, including the parts that go sideways.
+
+## The goal
+
+I run a [Solar Assistant](https://solar-assistant.io/) instance — a Pi that monitors my solar inverter and battery bank. Every time I needed to check something on it, I had to type a password. I wanted to stop doing that.
+
+The setup: Mac → SSH → `solar-assistant@192.168.1.20`.
+
+## Start with what you have
+
+Before generating a new key, look at what's already there:
+
+```bash
+ls ~/.ssh/*.pub
+```
+
+Most machines that have seen any development work already have a key. I had `id_ed25519.pub` and `id_rsa.pub`. Ed25519 is the one you want — smaller, faster, more secure than RSA.
+
+No keys? Generate one:
+
+```bash
+ssh-keygen -t ed25519 -C "your@email.com"
+```
+
+Accept the default path, set a passphrase if you want one.
+
+## Why ssh-copy-id fails
+
+The standard command is `ssh-copy-id`:
+
+```bash
+ssh-copy-id -i ~/.ssh/id_ed25519.pub user@host
+```
+
+This logs in with your password, appends the public key to `~/.ssh/authorized_keys` on the remote, and you never type the password again. Clean, simple.
+
+Except my first attempt hit this:
+
+```
+Received disconnect from 192.168.1.20 port 22:2: Too many authentication failures
+```
+
+This isn't about the password being wrong. SSH tries every key in your agent before it tries the password, and the Pi's `MaxAuthTries` limit cuts the connection off first. On a machine with several keys loaded, you hit the limit before you even reach the password prompt.
+
+The fix is to tell `ssh-copy-id` to skip public key auth entirely and go straight to password:
+
+```bash
+ssh-copy-id -i ~/.ssh/id_ed25519.pub \
+  -o PreferredAuthentications=password \
+  -o PubkeyAuthentication=no \
+  user@host
+```
+
+If you want to script this without an interactive password prompt, `sshpass` handles it:
+
+```bash
+sshpass -p 'yourpassword' ssh-copy-id -i ~/.ssh/id_ed25519.pub \
+  -o StrictHostKeyChecking=no \
+  -o PreferredAuthentications=password \
+  -o PubkeyAuthentication=no \
+  user@host
+```
+
+`sshpass` is available on Homebrew on macOS. Worth having around for automation.
+
+## Why the login still fails
+
+Key is uploaded. You try to log in:
+
+```bash
+ssh solar-assistant@192.168.1.20
+```
+
+And you get the same `Too many authentication failures` error. Again.
+
+The key is there. The problem is that SSH is still cycling through all your loaded keys before it gets to the right one, hitting the server's limit on the way. The fix is `IdentitiesOnly`:
+
+```bash
+ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes solar-assistant@192.168.1.20
+```
+
+`IdentitiesOnly=yes` tells SSH: try this key and nothing else. No cycling, no limit-tripping.
+
+## Making it stick
+
+You don't want to type those flags every time. Add a host entry to `~/.ssh/config`:
+
+```
+Host solar-assistant
+  HostName 192.168.1.20
+  User solar-assistant
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
+```
+
+After that, `ssh solar-assistant` just works.
+
+The `IdentitiesOnly yes` line is doing real work here. Without it, the agent will still offer your other keys first. Keep it.
+
+## One Pi, two services
+
+Once SSH was sorted I added [Pi-hole](https://pi-hole.net/) to the same Pi. Solar Assistant is an Elixir app running on `beam.smp` — it owns port 80. Pi-hole's web admin also wants port 80. They fight.
+
+The error is subtle. Pi-hole installs fine and DNS works (port 53 is free), but navigating to `http://192.168.1.20/admin` just shows Solar Assistant's dashboard. Pi-hole lost the port 80 race and its admin interface is silently gone.
+
+The fix is one line in `/etc/pihole/pihole.toml`:
+
+```toml
+[webserver]
+  port = "8080,[::]:8080"
+```
+
+Default is `"80o,443os,[::]:80o,[::]:443os"`. The `o` suffix means optional — Pi-hole won't crash if the port is taken, it just quietly skips it. Change it to `8080`, restart the service, and both live happily on the same box:
+
+| Service | URL |
+|---------|-----|
+| Solar Assistant | `http://192.168.1.20` |
+| Pi-hole admin | `http://192.168.1.20:8080/admin` |
+| Pi-hole DNS | `192.168.1.20` (point your router here) |
+
+```bash
+sudo systemctl restart pihole-FTL
+```
+
+DNS filtering starts the moment you set `192.168.1.20` as the DNS server in your router's DHCP settings.
+
+## What actually happened, in order
+
+1. Checked for existing keys: `id_ed25519` was already there, used it instead of generating a new one.
+2. First `ssh-copy-id` failed. SSH cycled through all loaded keys and hit `MaxAuthTries` before reaching password auth.
+3. Re-ran with `PubkeyAuthentication=no` and `sshpass` to deliver the password non-interactively.
+4. Key upload succeeded.
+5. First login attempt failed for the same reason.
+6. Added `IdentitiesOnly=yes`. Connection succeeded.
+7. Wrote the `~/.ssh/config` entry so the flags are never needed again.
+8. Added Pi-hole. Port 80 conflict with Solar Assistant — Pi-hole admin silently missing.
+9. Moved Pi-hole web admin to port 8080 in `pihole.toml`. Both services up.
+10. Assigned static IP `192.168.1.20`. Updated `known_hosts`. Done.
+
+The whole thing took about twenty minutes. Most of that was the same `MaxAuthTries` root cause showing up twice from different angles.
+
+---
+
+*`IdentitiesOnly yes` is doing a lot of quiet work here. Same goes for the `o` suffix in Pi-hole's port config — both are "optional" flags that prevent one service from blocking everything else. Worth knowing they exist before you spend twenty minutes debugging.*
