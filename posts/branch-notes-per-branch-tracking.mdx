@@ -1,0 +1,225 @@
+---
+title: Branch Notes — Per-Branch Context That Survives Context Switches
+slug: branch-notes-per-branch-tracking
+publishedAt: '2026-03-12'
+summary: >-
+  A CLI tool that gives every git branch its own note file — tracking
+  todos, blockers, decisions, and research so nothing gets lost when
+  switching between tasks.
+tags:
+  - Git
+  - Developer Workflow
+  - Tooling
+published: false
+series:
+  title: Developer Workflow
+  order: 2
+---
+
+In the [previous post](/blog/git-worktrees-bare-repos), I covered how bare repos and worktrees let me work on multiple branches simultaneously. But having multiple branches open creates a new problem: keeping track of what I was doing on each one.
+
+Which branch has that migration I need to test? Where did I leave off on the refactor? What was the decision about the API design? What's blocking the deploy?
+
+Comments in code don't cut it. Sticky notes don't scale. And commit messages capture what changed, not what I was thinking.
+
+So I built `bn` — a CLI tool that gives every branch its own structured note.
+
+## What a Branch Note Looks Like
+
+When I start working on a branch, `bn` creates a markdown note with this structure:
+
+```markdown
+---
+repo: kube-homelab
+branch: add-azure-vm
+created: 2026-03-10
+status: active
+machine: edds-MacBook-Pro.local
+---
+
+# kube-homelab / add-azure-vm
+
+## Goal
+Add an Azure VM as a Kubernetes node with KubeSpan overlay networking
+
+## Progress
+Provisioned Standard_B2ms in SA North, Talos config applied
+
+## Todos
+- [ ] Apply KubeSpan config to home nodes
+- [x] Provision Azure VM and get public IP
+- [x] Apply Talos config to Azure VM
+- [ ] Fix SOPS encrypted_regex for secrets
+
+## Blockers
+- etcd CA key missing — need home network access to extract it
+
+## Decisions
+- Using KubeSpan for node-to-node overlay instead of a VPN tunnel
+
+## To Research
+- Alternative peer discovery if K8s API is LAN-only
+
+## Collaboration
+- Asked @teammate about NSG port restrictions
+
+## To Ask
+- Should we restrict port 6443 to home IP only?
+```
+
+Every section has a purpose. Todos track work. Blockers flag what's stuck. Decisions record the "why" so I don't re-litigate later. Research captures things to investigate. Collaboration and Ask sections keep track of people.
+
+## Adding Context as I Work
+
+The `bn add` command appends to any section:
+
+```bash
+bn add todo "Fix SOPS encrypted_regex for secrets"
+bn add blocker "etcd CA key missing — need home network"
+bn add decision "Using KubeSpan over VPN tunnel"
+bn add research "Alternative peer discovery methods"
+bn add ask "Should we restrict port 6443 to home IP?"
+```
+
+The key is doing this in the moment, not retroactively. When I hit a blocker, I record it immediately. When I make a choice, I write down why. It takes five seconds and saves me twenty minutes the next time I pick up this branch.
+
+## The Dashboard
+
+`bn summary` gives a quick view across all branches:
+
+```
+Open todos across all branches: 53
+Blockers: 2
+To Research: 6
+
+kube-homelab/add-azure-vm (8 todos, 2 blockers)
+  [ ] Apply KubeSpan config to home nodes
+  [ ] Fix SOPS encrypted_regex for secrets
+  [!] etcd CA key missing — need home network access
+  [!] KubeSpan peers won't auto-discover
+
+bits-and-atoms/write-blogs-session (3 todos)
+  [ ] Write post 1: Bare repos + worktrees
+  [ ] Write post 2: Branch notes
+  [ ] Write post 3: Claude Code integration
+
+tracker/deployment-issue-fix (16 todos, 4 research)
+  [ ] Fix audit log: deduplicate LoggedIn events
+  [ ] Fix New Sale: cart quantity has no max
+  ...
+```
+
+Across 10 repos and dozens of branches, this is how I know what's actually in flight. `bn todo` lists just the open items. `bn status` gives a one-liner for the current branch.
+
+## Where Notes Live
+
+Notes are stored in a personal-notes repo, not in the project repo. This is deliberate:
+
+```
+~/projects/worktree/personal-notes/branch-notes/branch-notes/
+├── bits-and-atoms/
+│   ├── main/
+│   │   └── note.md
+│   ├── drafts/
+│   │   └── note.md
+│   └── write-blogs-session/
+│       ├── note.md
+│       └── investigation-plan.md    # extra files are fine
+├── kube-homelab/
+│   ├── main/
+│   │   ├── note.md
+│   │   └── build.sh                # per-repo build script
+│   └── add-azure-vm/
+│       ├── note.md
+│       └── fix-azure-etcd.sh
+└── tracker/
+    └── deployment-issue-fix/
+        └── note.md
+```
+
+Each branch gets a directory, not just a file. This means I can save investigation logs, debug scripts, PR review notes — anything related to that branch's work — right alongside the note.
+
+Keeping notes outside the project repo means they don't pollute commits, don't need `.gitignore` entries, and persist even if the worktree gets deleted.
+
+## Integration With Worktrees
+
+Branch notes and worktrees are designed to work together:
+
+- **`wt add feature/x`** creates a worktree. Next time I run any `bn` command there, the note is auto-created.
+- **`wt remove feature/x`** deletes the worktree. `bn prune` then auto-closes orphaned notes.
+- **`bn close`** marks a note as closed when a branch is merged. `bn list --all` still shows it if I need to look back.
+
+The lifecycle matches the branch lifecycle. Start work, take notes, finish work, notes close.
+
+## Investigation Files
+
+Sometimes a branch involves deep research — tracing through code, mapping dependencies, debugging a tricky issue. These findings deserve more than a bullet point.
+
+```bash
+# Create an investigation file
+bn files new "etcd-ca-recovery"
+# → Opens ~/.../<repo>/<branch>/etcd-ca-recovery.md in $EDITOR
+
+# List investigation files for this branch
+bn files
+# → etcd-ca-recovery.md
+# → fix-azure-etcd.sh
+```
+
+Investigation files live in the branch note directory. They're markdown by default but can be anything — shell scripts, curl commands, debug logs. When the branch closes, the investigation goes with it.
+
+## Per-Repo Build Scripts
+
+Each repo can have a `build.sh` in its `main/` note directory:
+
+```bash
+bn build-init   # Creates the template
+bn build-edit   # Opens it in $EDITOR
+bn build        # Runs it
+```
+
+I use these for repo-specific setup after pulling — running migrations, installing dependencies, rebuilding indexes. `bn refresh` does a `git pull --ff-only` followed by `bn build`, and `bn refresh-all` does it across every main worktree in parallel.
+
+## The Full Command Set
+
+Here's what I use daily:
+
+| Command | What it does |
+|---------|-------------|
+| `bn` | Ensure note exists, print directory path |
+| `bn --cat` | Print the note |
+| `bn add <section> "text"` | Append to a section |
+| `bn summary` | Dashboard across all branches |
+| `bn todo` | Open todos, all branches |
+| `bn status` | One-line status for current branch |
+| `bn close` | Close the note |
+| `bn prune` | Close notes for deleted worktrees |
+| `bn files` | List investigation files |
+| `bn pr [url]` | Link a PR to the branch |
+| `bn diff` | Git diff stat + open todos |
+| `bn refresh` | Pull + build current branch |
+| `bn refresh-all` | Pull + build all main branches |
+
+## What Makes This Work
+
+A few design choices that matter:
+
+**Plain markdown.** Notes are just `.md` files with YAML frontmatter. No database, no special format. I can read them with `cat`, edit them with vim, grep across them.
+
+**Instant capture.** `bn add todo "thing"` is fast enough that I do it reflexively. If it took more than two seconds, I wouldn't use it.
+
+**Convention over configuration.** The directory structure mirrors the repo/branch structure exactly. No config files mapping notes to branches. The path *is* the mapping.
+
+**Separate from code.** Notes contain my working state — half-formed thoughts, questions, dead ends. That doesn't belong in the project repo.
+
+**Built for context switching.** The whole point is that I can leave a branch for a week, come back, run `bn --cat`, and know exactly where I left off.
+
+## The Payoff
+
+Before branch notes, returning to a branch after a few days meant: read the last few commits, scan the diff, try to remember what I was thinking. Sometimes I'd redo work I'd already decided against because I forgot the decision.
+
+Now I run `bn --cat` and everything is there — what's done, what's pending, what's blocked, and why I made the choices I made. The ten seconds I spend recording context saves me ten minutes every time I resume.
+
+---
+
+Next up: [Claude Code Integration](/blog/claude-code-workflow) — how an AI coding assistant plugs into this system with hooks, automated branch notes, and session continuity.
