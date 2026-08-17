@@ -1,9 +1,9 @@
 ---
-title: Branch Notes — Per-Branch Context That Survives Context Switches
+title: 'Branch Notes: Per-Branch Context That Survives Context Switches'
 slug: branch-notes-per-branch-tracking
 publishedAt: '2026-03-12'
 summary: >-
-  A CLI tool that gives every git branch its own note file — tracking
+  A CLI tool that gives every git branch its own note file. It tracks
   todos, blockers, decisions, and research so nothing gets lost when
   switching between tasks.
 tags:
@@ -22,9 +22,9 @@ Which branch has that migration I need to test? Where did I leave off on the ref
 
 Comments in code don't cut it. Sticky notes don't scale. And commit messages capture what changed, not what I was thinking.
 
-So I built `bn` — a CLI tool that gives every branch its own structured note.
+So I built `bn`, a CLI tool that gives every branch its own structured note.
 
-## What a Branch Note Looks Like
+## What a branch note looks like
 
 When I start working on a branch, `bn` creates a markdown note with this structure:
 
@@ -111,7 +111,7 @@ tracker/deployment-issue-fix (16 todos, 4 research)
 
 Across 10 repos and dozens of branches, this is how I know what's actually in flight. `bn todo` lists just the open items. `bn status` gives a one-liner for the current branch.
 
-## Where Notes Live
+## Where notes live
 
 Notes are stored in a personal-notes repo, not in the project repo. This is deliberate:
 
@@ -137,11 +137,11 @@ Notes are stored in a personal-notes repo, not in the project repo. This is deli
         └── note.md
 ```
 
-Each branch gets a directory, not just a file. This means I can save investigation logs, debug scripts, PR review notes — anything related to that branch's work — right alongside the note.
+Each branch gets a directory, not just a file. That means investigation logs, debug scripts, and PR review notes sit right alongside the note. Anything related to that branch's work.
 
 Keeping notes outside the project repo means they don't pollute commits, don't need `.gitignore` entries, and persist even if the worktree gets deleted.
 
-## Integration With Worktrees
+## Integration with worktrees
 
 Branch notes and worktrees are designed to work together:
 
@@ -153,7 +153,7 @@ The lifecycle matches the branch lifecycle. Start work, take notes, finish work,
 
 ## Investigation Files
 
-Sometimes a branch involves deep research — tracing through code, mapping dependencies, debugging a tricky issue. These findings deserve more than a bullet point.
+Sometimes a branch involves deep research: tracing through code, mapping dependencies, debugging a tricky issue. These findings deserve more than a bullet point.
 
 ```bash
 # Create an investigation file
@@ -166,9 +166,9 @@ bn files
 # → fix-azure-etcd.sh
 ```
 
-Investigation files live in the branch note directory. They're markdown by default but can be anything — shell scripts, curl commands, debug logs. When the branch closes, the investigation goes with it.
+Investigation files live in the branch note directory. They're markdown by default but can be anything: shell scripts, curl commands, debug logs. When the branch closes, the investigation goes with it.
 
-## Per-Repo Build Scripts
+## Per-repo build scripts
 
 Each repo can have a `build.sh` in its `main/` note directory:
 
@@ -178,9 +178,9 @@ bn build-edit   # Opens it in $EDITOR
 bn build        # Runs it
 ```
 
-I use these for repo-specific setup after pulling — running migrations, installing dependencies, rebuilding indexes. `bn refresh` does a `git pull --ff-only` followed by `bn build`, and `bn refresh-all` does it across every main worktree in parallel.
+I use these for repo-specific setup after pulling: running migrations, installing dependencies, rebuilding indexes. `bn refresh` does a `git pull --ff-only` followed by `bn build`, and `bn refresh-all` does it across every main worktree in parallel.
 
-## The Full Command Set
+## The full command set
 
 Here's what I use daily:
 
@@ -200,7 +200,7 @@ Here's what I use daily:
 | `bn refresh` | Pull + build current branch |
 | `bn refresh-all` | Pull + build all main branches |
 
-## What Makes This Work
+## What makes this work
 
 A few design choices that matter:
 
@@ -210,7 +210,7 @@ A few design choices that matter:
 
 **Convention over configuration.** The directory structure mirrors the repo/branch structure exactly. No config files mapping notes to branches. The path *is* the mapping.
 
-**Separate from code.** Notes contain my working state — half-formed thoughts, questions, dead ends. That doesn't belong in the project repo.
+**Separate from code.** Notes contain my working state: half-formed thoughts, questions, dead ends. That doesn't belong in the project repo.
 
 **Built for context switching.** The whole point is that I can leave a branch for a week, come back, run `bn --cat`, and know exactly where I left off.
 
@@ -218,8 +218,8 @@ A few design choices that matter:
 
 Before branch notes, returning to a branch after a few days meant: read the last few commits, scan the diff, try to remember what I was thinking. Sometimes I'd redo work I'd already decided against because I forgot the decision.
 
-Now I run `bn --cat` and everything is there — what's done, what's pending, what's blocked, and why I made the choices I made. The ten seconds I spend recording context saves me ten minutes every time I resume.
+Now I run `bn --cat` and everything is there. What's done, what's pending, what's blocked, and why I made the choices I made. The ten seconds I spend recording context saves me ten minutes every time I resume.
 
 ---
 
-Next up: [Claude Code Integration](/blog/claude-code-workflow) — how an AI coding assistant plugs into this system with hooks, automated branch notes, and session continuity.
+Next up: [Claude Code Integration](/blog/claude-code-workflow). How an AI coding assistant plugs into this system with hooks, automated branch notes, and session continuity.

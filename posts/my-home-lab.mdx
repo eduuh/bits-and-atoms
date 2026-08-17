@@ -39,7 +39,7 @@ Idles at 50W total. The electricity bill barely notices.
 
 Instead of a traditional Linux distribution, I run [Talos Linux](https://www.talos.dev/), an immutable, API-managed OS designed for Kubernetes.
 
-**Immutable, by design.** No SSH, no shell. The entire OS is read-only and managed via API — minimal attack surface, only essential components. Configuration is defined in YAML and applied via `talosctl`. Upgrades roll out automatically without downtime.
+**Immutable, by design.** No SSH, no shell. The entire OS is read-only and managed via API. Minimal attack surface, only essential components. Configuration is defined in YAML and applied via `talosctl`. Upgrades roll out automatically without downtime.
 
 That sounds annoying until you live with it. Then it's calm. Nothing to forget to patch, nothing to half-configure.
 
@@ -56,7 +56,7 @@ Everything in my cluster is managed through Git. I use [Flux v2](https://fluxcd.
 2. Flux watches the repo and automatically applies changes
 3. Secrets are encrypted with [SOPS](https://github.com/getsops/sops) + [age](https://github.com/FiloSottile/age), with some stored in [1Password](https://1password.com/)
 
-<GitHubRepo repo="eduuh/kube-homelab" description="GitOps repository for my Kubernetes homelab - Talos Linux, Flux, and all the YAML" />
+<GitHubRepo repo="eduuh/kube-homelab" description="GitOps repository for my Kubernetes homelab: Talos Linux, Flux, and all the YAML" />
 
 ```
 cluster/
@@ -101,7 +101,7 @@ Pi-hole blocks ads and tracking at the DNS level, while CoreDNS resolves interna
 
 ## Storage: Longhorn
 
-My rule for the homelab is simple: **I care about getting data back, not about staying up.** Services can fall over. Data can't disappear. [Longhorn](https://longhorn.io/) fits that — distributed block storage across the cluster, with 2-3 replicas of each volume spread over nodes, automated snapshots, and both ReadWriteOnce and ReadWriteMany modes.
+My rule for the homelab is simple: **I care about getting data back, not about staying up.** Services can fall over. Data can't disappear. [Longhorn](https://longhorn.io/) fits that. Distributed block storage across the cluster, with 2-3 replicas of each volume spread over nodes, automated snapshots, and both ReadWriteOnce and ReadWriteMany modes.
 
 If a node dies, the data is still available on the others. Off-cluster backups are next on my list. I haven't spent enough time with Longhorn's recurring backup jobs yet.
 
@@ -128,7 +128,7 @@ All services share a 200GB volume with organized directories:
 └── movies/
 ```
 
-This enables hardlinks. When Sonarr moves a completed download, it's instant — no extra disk space used.
+This enables hardlinks. When Sonarr moves a completed download, it's instant. No extra disk space used.
 
 ### Productivity
 
@@ -200,7 +200,7 @@ Start simple, then iterate. My first attempt was over-engineered with Ansible, T
 
 GitOps is worth it. Everything in Git means I can rebuild the entire cluster from scratch, and when things break, `git log` shows exactly what changed.
 
-Shared storage matters. The media stack only works smoothly because all services see the same filesystem — plan that upfront and skip a lot of pain later.
+Shared storage matters. The media stack only works smoothly because all services see the same filesystem. Plan that upfront and skip a lot of pain later.
 
 Monitoring from day one. Adding observability after the fact is painful. Bake it in.
 
@@ -208,7 +208,7 @@ Monitoring from day one. Adding observability after the fact is painful. Bake it
 
 The current storage setup works, but there's room to grow. A dedicated NAS for large-scale storage and off-cluster backups is the next big move. I've also got two 4TB 2.5" SSDs sitting in a drawer for expanding cluster storage, plus a 1TB drive earmarked for OS-level operations.
 
-For Jellyfin, an old Dell laptop with an 8th-gen Intel Core i7 would be ideal — plenty of compute for hardware transcoding. The plan is to swap it in for `intel-w-acemagic`, which has the lowest compute of the three nodes, and find a new role for the ACEMAGIC.
+For Jellyfin, an old Dell laptop with an 8th-gen Intel Core i7 would be ideal. Plenty of compute for hardware transcoding. The plan is to swap it in for `intel-w-acemagic`, which has the lowest compute of the three nodes, and find a new role for the ACEMAGIC.
 
 ![Dell laptop internals showing the motherboard, 42Wh battery, and upgrade potential](/images/20260114_192856.jpg)
 

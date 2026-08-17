@@ -15,7 +15,7 @@ tldr: >-
   Clone repos as bare, create worktrees per branch, never stash again. I built wt (worktree manager), bn (branch notes), and tat (tmux session manager) to tie it all together.
 keyTakeaways:
   - Bare repos eliminate the "dirty working directory" problem entirely
-  - Worktrees give you parallel branches as actual directories — no checkout needed
+  - Worktrees give you parallel branches as actual directories, no checkout needed
   - A small CLI toolchain (wt, bn, tat) turns this from a git trick into a full workflow
   - Branch notes that travel with your worktrees keep context across sessions
 ---
@@ -24,7 +24,7 @@ I've been using git worktrees with bare repos as my primary workflow for over a 
 
 The pitch is simple: instead of one working directory that you constantly checkout between branches, you get a directory per branch. No stashing. No "let me commit this WIP real quick." You just open another directory.
 
-But the raw git commands are clunky, and worktrees alone don't solve the real problem — which is context. What was I doing on this branch? What's left? What decisions did I make three days ago? That's where the tooling comes in.
+But the raw git commands are clunky, and worktrees alone don't solve the real problem, which is context. What was I doing on this branch? What's left? What decisions did I make three days ago? That's where the tooling comes in.
 
 ## The directory layout
 
@@ -43,7 +43,7 @@ Here's what my `~/projects` looks like:
   "feat-notifications",
 ]} />
 
-Bare repos live in `~/projects/bare/`. Worktrees live in `~/projects/worktree/<repo>/<branch>`. That's it. The bare repo is the source of truth — it holds the git objects and refs. Each worktree is a full working directory pointed at a branch.
+Bare repos live in `~/projects/bare/`. Worktrees live in `~/projects/worktree/<repo>/<branch>`. That's it. The bare repo is the source of truth. It holds the git objects and refs. Each worktree is a full working directory pointed at a branch.
 
 The key insight: **a bare repo has no working directory of its own**. It's just the `.git` internals. You never `cd` into it to write code. You work in worktrees.
 
@@ -71,13 +71,13 @@ git worktree add ~/projects/worktree/repo/my-feature origin/my-feature
 git worktree add -b new-branch ~/projects/worktree/repo/new-branch main
 ```
 
-Now `~/projects/worktree/repo/main` is a fully functional checkout on `main`, and `~/projects/worktree/repo/my-feature` is on its branch. Both exist simultaneously. Both have their own node_modules, build artifacts, editor state — everything.
+Now `~/projects/worktree/repo/main` is a fully functional checkout on `main`, and `~/projects/worktree/repo/my-feature` is on its branch. Both exist simultaneously. Both have their own node_modules, build artifacts, editor state. Everything.
 
 ## Why bare repos instead of regular clones with worktrees?
 
-You can use `git worktree add` from a regular clone. But then your original clone *is* a worktree too — one that holds the `.git` directory. If you delete it, you break everything. If you want to switch its branch, the same stashing dance returns.
+You can use `git worktree add` from a regular clone. But then your original clone *is* a worktree too, the one that holds the `.git` directory. If you delete it, you break everything. If you want to switch its branch, the same stashing dance returns.
 
-With a bare repo, there's no privileged worktree. They're all equal. You can add and remove any of them freely. The bare repo is just the engine room — you never need to touch it directly.
+With a bare repo, there's no privileged worktree. They're all equal. You can add and remove any of them freely. The bare repo is just the engine room. You never need to touch it directly.
 
 ## `wt`: the worktree manager
 
@@ -92,17 +92,17 @@ wt remove feat-old                       # clean up
 wt go main                               # cd to a worktree (with fzf if no arg)
 ```
 
-`wt clone` handles the bare clone, refspec config, and initial fetch in one command. `wt add` uses fzf to pick from remote branches when you don't specify one — so you can interactively browse what's available.
+`wt clone` handles the bare clone, refspec config, and initial fetch in one command. `wt add` uses fzf to pick from remote branches when you don't specify one, so you can browse what's available.
 
 The directory convention is predictable: `wt add my-feature` always creates `~/projects/worktree/<repo>/my-feature`. No guessing where things are.
 
-Some repos don't benefit from this — my dotfiles and neovim config stay as regular clones. `wt` knows about these exceptions and clones them normally.
+Some repos don't benefit from this. My dotfiles and neovim config stay as regular clones. `wt` knows about these exceptions and clones them normally.
 
 ## `tat`: tmux session per worktree
 
 I live in tmux. Each worktree gets its own tmux session, named after the directory. [`tat`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tat) (short for "tmux attach") uses zoxide's frecency data to find project directories and attaches or creates sessions for them.
 
-The flow: press a keybinding, fzf pops up showing my projects sorted by how recently and frequently I've used them, pick one, and I'm in a tmux session with the cwd set to that worktree. Bare repo directories (the `.git` ones) are automatically skipped — they'd be useless to open.
+The flow: press a keybinding, fzf pops up showing my projects sorted by how recently and frequently I've used them, pick one, and I'm in a tmux session with the cwd set to that worktree. Bare repo directories (the `.git` ones) are automatically skipped. They'd be useless to open.
 
 This means switching between "main on tracker" and "feature branch on tracker" is the same gesture as switching between entirely different projects. There's no conceptual difference. They're all just directories with tmux sessions.
 
@@ -157,7 +157,7 @@ I use this constantly. When I come back to a branch after a week, `bn --cat` tel
 
 ### Investigation files
 
-Sometimes a todo item turns into a proper investigation. Branch notes support investigation files — markdown docs saved alongside the note:
+Sometimes a todo item turns into a proper investigation. Branch notes support investigation files, markdown docs saved alongside the note:
 
 ```bash
 note_dir=$(bn --path)
@@ -176,13 +176,13 @@ bn script new deploy  # create a new script
 bn script list        # see what's available
 ```
 
-These run with the cwd set to the repo directory, so they work from anywhere. `bn refresh` fetches, pulls, and runs the build script — one command to get a worktree up to date.
+These run with the cwd set to the repo directory, so they work from anywhere. `bn refresh` fetches, pulls, and runs the build script. One command to get a worktree up to date.
 
 `bn refresh-all` does this for every main worktree in parallel. I run it at the start of each day.
 
 ## The daily flow
 
-Morning starts with `bn refresh-all` — all main branches pull and rebuild in parallel. When I'm picking up a feature, `wt add feat/new-thing` creates the worktree, `tat` opens a tmux session for it, `bn` initializes a note, and I write the goal plus first todos.
+Morning starts with `bn refresh-all`. All main branches pull and rebuild in parallel. When I'm picking up a feature, `wt add feat/new-thing` creates the worktree, `tat` opens a tmux session for it, `bn` initializes a note, and I write the goal plus first todos.
 
 **The piece that makes the rest work: I don't context-switch. I just switch tmux sessions.** The other branch is exactly where I left it. Same editor state, same terminal history, same uncommitted changes. When I switch back, `bn --cat` reminds me what I was doing.
 
@@ -199,23 +199,23 @@ My notes themselves use this workflow. `personal-notes` is a bare repo with four
 | youtube | `youtube` | Video content and scripts |
 | learning | `learning` | Learning notes and research |
 
-The `branch-notes` worktree is special — it's where `bn` reads and writes. Having it as a dedicated worktree means I can commit and push branch notes independently without touching the main content.
+The `branch-notes` worktree is special. It's where `bn` reads and writes. Having it as a dedicated worktree means I can commit and push branch notes independently without touching the main content.
 
-`bn learn` is a recent addition — it creates structured learning notes with sections for resources, key concepts, questions, and practice exercises.
+`bn learn` is a recent addition. It creates structured learning notes with sections for resources, key concepts, questions, and practice exercises.
 
 ## What I'd do differently
 
 **Start with the tooling.** I used raw `git worktree` commands for months before writing `wt`. That friction almost made me abandon the approach. The workflow only clicked once the tooling removed the ceremony.
 
-Fewer worktrees per repo. Early on I'd create one for every branch. Now I keep 2-3 active per repo and clean up aggressively — disk space adds up fast when each worktree has its own `node_modules`.
+Fewer worktrees per repo. Early on I'd create one for every branch. Now I keep 2-3 active per repo and clean up aggressively. Disk space adds up fast when each worktree has its own `node_modules`.
 
 Branch notes from day one. I added `bn` later and wished I'd had it from the start. The notes tell me *why* I made a decision better than any commit history can.
 
 ## Is this for you?
 
-If you regularly work on multiple branches of the same repo — yes, try it. The setup cost is one `git clone --bare` and a mental model shift. You don't need my scripts. Raw `git worktree add/remove/list` gets you 80% of the benefit.
+If you regularly work on multiple branches of the same repo, yes. Try it. The setup cost is one `git clone --bare` and a mental model shift. You don't need my scripts. Raw `git worktree add/remove/list` gets you 80% of the benefit.
 
-If you mostly work on one branch at a time and rarely context-switch — probably not worth it. A regular clone is simpler.
+If you mostly work on one branch at a time and rarely context-switch, probably not worth it. A regular clone is simpler.
 
 The scripts are all in my [dotfiles repo](https://github.com/eduuh/dotfiles). Opinionated, built for my workflow, but the patterns generalize.
 

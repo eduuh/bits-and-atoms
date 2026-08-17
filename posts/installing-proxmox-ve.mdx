@@ -3,7 +3,7 @@ title: Installing Proxmox VE
 slug: installing-proxmox-ve
 publishedAt: '2026-04-18'
 summary: >-
-  Walking through how I installed Proxmox VE on my Glovary mini PC — the hypervisor
+  Walking through how I installed Proxmox VE on my Glovary mini PC, the hypervisor
   hosting my Kubernetes control plane and OPNsense firewall.
 tags:
   - Self-Hosted
@@ -16,7 +16,7 @@ series:
   order: 3
 ---
 
-The [Glovary mini PC](/blog/homelab-hardware) in my cluster does double duty: it runs OPNsense as my firewall and hosts a VM that acts as the Kubernetes control plane. Running two unrelated workloads on one box only works because of a hypervisor — and for that, I reach for Proxmox VE.
+The [Glovary mini PC](/blog/homelab-hardware) in my cluster does double duty: it runs OPNsense as my firewall and hosts a VM that acts as the Kubernetes control plane. Running two unrelated workloads on one box only works because of a hypervisor. And for that, I reach for Proxmox VE.
 
 Proxmox VE is a Debian-based open-source hypervisor with a clean web UI, KVM for full VMs, and LXC for lightweight containers. It's what I use when I want "a VM on that box" without the complexity of a full virtualization platform.
 
@@ -25,7 +25,7 @@ Here's how I install it.
 ## Prerequisites
 
 <Callout type="info">
-Proxmox needs a CPU with hardware virtualization support (Intel VT-x or AMD-V). Enable it in the BIOS before installing — otherwise the installer will run, but you won't be able to start VMs.
+Proxmox needs a CPU with hardware virtualization support (Intel VT-x or AMD-V). Enable it in the BIOS before installing. Otherwise the installer will run, but you won't be able to start VMs.
 </Callout>
 
 You'll need:
@@ -39,7 +39,7 @@ You'll need:
 
 Grab the latest ISO from the [Proxmox downloads page](https://www.proxmox.com/en/downloads/proxmox-virtual-environment/iso). I went with the current stable release.
 
-Verify the SHA256 checksum before flashing — it takes thirty seconds and rules out a corrupted download:
+Verify the SHA256 checksum before flashing. It takes thirty seconds and rules out a corrupted download:
 
 <Terminal lines={[
   "$ shasum -a 256 proxmox-ve_8.2-1.iso",
@@ -67,7 +67,7 @@ sudo dd if=proxmox-ve_8.2-1.iso of=/dev/rdisk4 bs=1M status=progress
 Double-check the device path. `dd` will happily overwrite your main drive if you point it at the wrong disk. The `r` prefix (`rdisk4`) is macOS-specific and makes the write much faster.
 </Callout>
 
-A note on the block size: I use `bs=1M` (uppercase) because it works on both BSD `dd` (macOS) and GNU `dd` (Linux). The lowercase `bs=1m` works on macOS but errors out on Linux — see [dd Block Size: BSD vs GNU](/blog/dd-block-size-bsd-vs-gnu) for the full story.
+A note on the block size: I use `bs=1M` (uppercase) because it works on both BSD `dd` (macOS) and GNU `dd` (Linux). The lowercase `bs=1m` works on macOS but errors out on Linux. See [dd Block Size: BSD vs GNU](/blog/dd-block-size-bsd-vs-gnu) for the full story.
 
 On Linux the same command works against `/dev/sdX` (no `r` prefix needed). On Windows, [Rufus](https://rufus.ie/) in DD mode is the easiest option.
 
@@ -81,7 +81,7 @@ Walk through the prompts:
 
 1. EULA. Scroll to the bottom, click `I agree`. You can't proceed without accepting.
 2. Target disk. I use the internal NVMe. Default ext4 is fine for a single-disk setup; pick ZFS only if you have mirrored disks.
-3. Country, timezone, keyboard. Set these correctly now — changing them later is a pain.
+3. Country, timezone, keyboard. Set these correctly now. Changing them later is a pain.
 4. Root password and admin email. Use a real email; Proxmox sends alerts there.
 5. Network config. Gets its own section below. It's the step that deserves the most attention on a multi-NIC box.
 6. Hostname (FQDN). I went with `proxmox.home.arpa`.
@@ -90,7 +90,7 @@ Walk through the prompts:
 
 The Glovary has four Intel i226-V 2.5GbE ports. During install, Proxmox asks you to pick one NIC to bind the management interface to. That's the port you'll use to reach the web UI, and the one the host itself uses for IP connectivity.
 
-The installer lists them as `eth0` through `eth3` (or in newer versions, predictable names like `enp1s0`, `enp2s0`, etc.). Before picking, I mapped out what every port is going to do once OPNsense is running. No VLAN tagging for now — each physical port is its own network, and segregation is enforced at the wire:
+The installer lists them as `eth0` through `eth3` (or in newer versions, predictable names like `enp1s0`, `enp2s0`, etc.). Before picking, I mapped out what every port is going to do once OPNsense is running. No VLAN tagging for now. Each physical port is its own network, and segregation is enforced at the wire:
 
 | Port | Role | Network | Subnet |
 |------|------|---------|--------|
@@ -123,20 +123,20 @@ The actual OPNsense configuration (assigning each port as its own interface, fir
 
 ### Static vs dynamic on `10.10.1.0/24` (the LAN segment)
 
-Each of the three internal networks needs its own internal layout. Office (`10.10.2.0/24`) and IoT/Guest (`10.10.3.0/24`) are mostly dynamic clients — I'll cover those in the OPNsense post. The LAN segment is the interesting one because it holds all the infrastructure.
+Each of the three internal networks needs its own internal layout. Office (`10.10.2.0/24`) and IoT/Guest (`10.10.3.0/24`) are mostly dynamic clients. I'll cover those in the OPNsense post. The LAN segment is the interesting one because it holds all the infrastructure.
 
-The mistake I've made before is letting DHCP and static assignments overlap — DHCP hands out an address, then a week later I statically assign the same one somewhere, and suddenly two devices fight for the IP. Splitting the range up front avoids that entirely.
+The mistake I've made before is letting DHCP and static assignments overlap. DHCP hands out an address, then a week later I statically assign the same one somewhere, and suddenly two devices fight for the IP. Splitting the range up front avoids that entirely.
 
 Here's the layout for `10.10.1.0/24`:
 
 | Range | Purpose | Examples |
 |-------|---------|----------|
 | `.1` | Gateway / firewall management | OPNsense LAN interface |
-| `.2 – .9` | Reserved for future routers / switches | managed switch, APs |
-| `.10 – .49` | Static infrastructure | Proxmox host, Kubernetes nodes, Pi-hole |
-| `.50 – .99` | Static services (MetalLB pool) | ingress, Pi-hole DNS VIP, other LB IPs |
-| `.100 – .199` | DHCP pool (dynamic wired clients) | ethernet-only devices without reservations |
-| `.200 – .254` | Reserved | emergencies, break-glass static IPs |
+| `.2 to .9` | Reserved for future routers / switches | managed switch, APs |
+| `.10 to .49` | Static infrastructure | Proxmox host, Kubernetes nodes, Pi-hole |
+| `.50 to .99` | Static services (MetalLB pool) | ingress, Pi-hole DNS VIP, other LB IPs |
+| `.100 to .199` | DHCP pool (dynamic wired clients) | ethernet-only devices without reservations |
+| `.200 to .254` | Reserved | emergencies, break-glass static IPs |
 
 Concrete assignments within the static infra block:
 
@@ -151,7 +151,7 @@ Concrete assignments within the static infra block:
 
 The rule I follow: **anything that's referenced by name from another box lives in static space.** Pi-hole is referenced as a DNS server, the Kubernetes nodes are referenced by `kubeadm`/Talos/kubelet, the Proxmox host is referenced by me over SSH. None of them can afford to get a new IP on a reboot. Anything that nobody references back (laptops, phones, my wife's iPad) goes in DHCP and I never think about it again.
 
-In OPNsense I'll configure the DHCP server to only hand out `.100 – .199` and leave the rest alone. No overlap, no surprises.
+In OPNsense I'll configure the DHCP server to only hand out `.100 to .199` and leave the rest alone. No overlap, no surprises.
 
 Confirm the summary, then let it install. Takes two or three minutes on NVMe.
 
@@ -163,7 +163,7 @@ Once installed, remove the USB and reboot. You'll land on a console showing the 
 https://10.10.1.10:8006
 ```
 
-Hit that from another machine. Your browser will complain about the self-signed cert — that's expected. Log in as `root` with the password you set, and choose `PAM` as the authentication realm.
+Hit that from another machine. Your browser will complain about the self-signed cert. That's expected. Log in as `root` with the password you set, and choose `PAM` as the authentication realm.
 
 ![Proxmox web UI login](/images/proxmox-login-placeholder.jpg)
 
@@ -232,7 +232,7 @@ The default bridge assumes DHCP. If your network uses static IPs (mine does for 
 
 `/etc/hosts` needs the hostname. If the FQDN doesn't resolve to the node's IP, the web UI starts throwing weird errors after a reboot. Double-check this before you walk away.
 
-**Cluster joins are one-way.** If you plan to run multiple Proxmox nodes together, set up the cluster before putting VMs on the secondary nodes. Joining a cluster wipes existing VM config on the joining node — that one cost me a half-built worker once.
+**Cluster joins are one-way.** If you plan to run multiple Proxmox nodes together, set up the cluster before putting VMs on the secondary nodes. Joining a cluster wipes existing VM config on the joining node. That one cost me a half-built worker once.
 
 ## What's next
 
@@ -240,6 +240,6 @@ With Proxmox running, the Glovary now hosts two VMs: an OPNsense firewall (2 vCP
 
 The point of this setup is that the firewall and the control plane are completely isolated. A problem with one doesn't take down the other, and I can snapshot either before a risky change.
 
-Next post in the series: [installing OPNsense as a VM on Proxmox](/blog) — the firewall setup that sits between the internet and everything else.
+Next post in the series: [installing OPNsense as a VM on Proxmox](/blog). The firewall setup that sits between the internet and everything else.
 
 If you want the full picture of how this all fits together, check out [My Home Lab](/blog/my-home-lab) for the software stack and [the GitOps repo](https://github.com/eduuh/kube-homelab) that runs on top of it.
