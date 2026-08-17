@@ -3,7 +3,7 @@ title: Claude Code in My Developer Workflow
 slug: claude-code-workflow
 publishedAt: '2026-03-12'
 summary: >-
-  How I integrated Claude Code into my worktree and branch notes system —
+  How I integrated Claude Code into my worktree and branch notes system:
   session hooks, automatic context loading, and AI that remembers where
   I left off.
 tags:
@@ -18,11 +18,11 @@ series:
 
 In the previous posts I covered [worktrees](/blog/git-worktrees-bare-repos) for parallel branches and [branch notes](/blog/branch-notes-per-branch-tracking) for per-branch context tracking. This post is about what happens when you plug an AI coding assistant into that system.
 
-I use [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) — Anthropic's CLI tool that runs in the terminal and can read, write, and execute code. The interesting part isn't the AI itself. It's how it interacts with the workflow I already had.
+I use [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), Anthropic's CLI tool that runs in the terminal and can read, write, and execute code. The interesting part isn't the AI itself. It's how it interacts with the workflow I already had.
 
-## The Session Hook
+## The session hook
 
-Claude Code supports hooks — shell commands that run at specific lifecycle events. I have one that fires at session start:
+Claude Code supports hooks. They're shell commands that run at specific lifecycle events. I have one that fires at session start:
 
 ```json
 {
@@ -45,7 +45,7 @@ Claude Code supports hooks — shell commands that run at specific lifecycle eve
 
 When I open Claude Code in any worktree, the first thing it sees is the branch note. The goal, the open todos, the blockers, the decisions made so far. Before I type a single word, it has context.
 
-This matters more than it sounds. Without the hook, every session starts with "let me look at what we're working on" — reading files, checking git log, asking questions. With the hook, the AI already knows the branch is about adding an Azure VM to the cluster, that the etcd CA key is missing, and that KubeSpan peer discovery is blocked.
+This matters more than it sounds. Without the hook, every session starts with "let me look at what we're working on". Reading files, checking git log, asking questions. With the hook, the AI already knows the branch is about adding an Azure VM to the cluster, that the etcd CA key is missing, and that KubeSpan peer discovery is blocked.
 
 ## The CLAUDE.md Instructions
 
@@ -69,9 +69,9 @@ Use it throughout every session.
 
 The key word is "proactively." I don't tell Claude to update the branch note after every step. The instructions say to do it reflexively, the same way I would. When it finishes a task, it checks it off. When it discovers something unexpected, it records a blocker. When it makes a design choice, it logs a decision.
 
-The result is that at the end of a session, the branch note accurately reflects what happened — even if I wasn't paying close attention.
+The result is that at the end of a session, the branch note accurately reflects what happened, even if I wasn't paying close attention.
 
-## What This Looks Like in Practice
+## What this looks like in practice
 
 Here's a real example. I tell Claude to write three blog posts for a series. It:
 
@@ -104,7 +104,7 @@ Don't wait until the user asks to commit —
 create commits naturally as milestones are reached.
 ```
 
-This is how I work manually — small, frequent commits — and it was easy to extend that to the AI. Each completed post gets its own commit. Each bug fix gets its own commit. The git history stays readable.
+This is how I work manually: small, frequent commits. It was easy to extend that to the AI. Each completed post gets its own commit. Each bug fix gets its own commit. The git history stays readable.
 
 ## Auto Memory
 
@@ -118,7 +118,7 @@ These memories load automatically in every session. Combined with the branch not
 
 ## Investigation Files
 
-When Claude does deep research — reading code, tracing execution paths, mapping dependencies — I have it save findings to the branch note directory:
+When Claude does deep research (reading code, tracing execution paths, mapping dependencies), I have it save findings to the branch note directory:
 
 ```bash
 note_dir=$(bn --path)
@@ -127,25 +127,25 @@ note_dir=$(bn --path)
 
 These files survive across sessions. If Claude spends twenty minutes understanding a codebase and I close the session, that understanding is saved. Next session, it can read its own notes instead of re-doing the work.
 
-## The Feedback Loop
+## The feedback loop
 
 The most valuable part of this setup is the feedback loop between human and AI working context:
 
-1. **I record things manually:** `bn add blocker "need API key from team"` — Claude sees this next session and works around it
-2. **Claude records things automatically:** Decisions, completed todos, discovered blockers — I see these when I run `bn summary`
+1. **I record things manually:** `bn add blocker "need API key from team"`. Claude sees this next session and works around it
+2. **Claude records things automatically:** decisions, completed todos, discovered blockers. I see these when I run `bn summary`
 3. **Both persist:** Whether I or Claude made the note, it's in the same place and follows the same format
 
 The branch note becomes a shared working document. I don't need to re-explain what happened last session. Claude doesn't need to re-discover what I already found.
 
-## What Works Well
+## What works well
 
 **Session continuity.** The hook + memory + branch notes mean that closing and reopening Claude Code feels like pausing and unpausing, not starting over.
 
 **Reduced babysitting.** Because the CLAUDE.md instructions are explicit about branch notes, commits, and proactive recording, I don't need to remind the AI to track its work. It just does it.
 
-**Cross-session visibility.** `bn summary` shows me what's happening across all branches — including work that Claude did while I was focused on something else.
+**Cross-session visibility.** `bn summary` shows me what's happening across all branches, including work that Claude did while I was focused on something else.
 
-## What Could Be Better
+## What could be better
 
 **Context window limits.** Long branch notes with many todos can eat into the context window. I periodically clean up completed items to keep notes focused.
 

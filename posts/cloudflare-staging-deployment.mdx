@@ -26,7 +26,7 @@ Deploying to production is easy. The hard part is having a staging environment t
 
 ## The problem
 
-Production lives at `eduuh.com` — public, indexed by search engines. Staging lives at `staging.eduuh.com`, private, for poking at changes before they go live.
+Production lives at `eduuh.com`. Public, indexed by search engines. Staging lives at `staging.eduuh.com`, private, for poking at changes before they go live.
 
 Cloudflare Pages handles the deployment, but both environments are public by default.<Footnote id={1}>Cloudflare Pages creates preview deployments for every branch and pull request, publicly accessible by default.</Footnote> I needed staging behind authentication without wiring anything into the app itself.
 
@@ -285,7 +285,7 @@ Or use the "Edit Cloudflare Zero Trust" template and add DNS permissions on top.
 
 **Empty policies block everyone, silently.** If your Access app has no policies, the login page still appears but authentication fails with no obvious clue why. Always create at least one allow policy.
 
-The identity provider has to be linked on the app, not just configured globally — add it to `allowed_idps` or OTP won't work even when it looks set up. Token permissions are granular too: a Pages deployment token can't manage Access, so separate tokens per purpose. And custom domains default to production. Adding a custom domain via the Pages API doesn't automatically point it to a specific branch; update the DNS CNAME to the branch alias.
+The identity provider has to be linked on the app, not just configured globally. Add it to `allowed_idps` or OTP won't work even when it looks set up. Token permissions are granular too: a Pages deployment token can't manage Access, so separate tokens per purpose. And custom domains default to production. Adding a custom domain via the Pages API doesn't automatically point it to a specific branch; update the DNS CNAME to the branch alias.
 
 ## Cost
 

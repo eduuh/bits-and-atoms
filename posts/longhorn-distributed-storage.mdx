@@ -62,11 +62,11 @@ spec:
         - fast
 ```
 
-This is declarative infrastructure — Flux applies it, Longhorn enforces it. If someone manually tweaks a disk config in the UI, the next sync reverts it. Intentional, but worth knowing if you're debugging and wondering why your changes aren't sticking.
+This is declarative infrastructure. Flux applies it, Longhorn enforces it. If someone manually tweaks a disk config in the UI, the next sync reverts it. Intentional, but worth knowing if you're debugging and wondering why your changes aren't sticking.
 
 ## Disk tags
 
-One of Longhorn's best features is **disk tags** — they let you target specific storage tiers per volume. I use:
+One of Longhorn's best features is **disk tags**. They let you target specific storage tiers per volume. I use:
 
 | Tag | Meaning |
 |-----|---------|
@@ -100,7 +100,7 @@ When a pod writes to a Longhorn volume:
 
 The default replication factor is 3 for critical data, 2 for less critical. You can set this per StorageClass or override per volume in the UI.
 
-If a node goes down, volumes with surviving replicas stay healthy and keep serving. Volumes where the *only* replica was on the dead node become **faulted** — detached, inaccessible, waiting for that node to come back.
+If a node goes down, volumes with surviving replicas stay healthy and keep serving. Volumes where the *only* replica was on the dead node become **faulted**. Detached, inaccessible, waiting for that node to come back.
 
 This is where things get interesting.
 
@@ -113,7 +113,7 @@ One of my worker nodes (`intel-w-acemagic`) went offline unexpectedly. The kubel
 - 20+ pods stuck Terminating, waiting for the node to acknowledge their deletion
 - A handful of pods in ContainerCreating, trying to attach volumes that couldn't
 
-The degraded volumes kept running. Redundancy doing its job. The faulted volumes were the problem — pods depending on them sat in `ContainerCreating` indefinitely.
+The degraded volumes kept running. Redundancy doing its job. The faulted volumes were the problem. Pods depending on them sat in `ContainerCreating` indefinitely.
 
 ```
 NAME               STATE      ROBUSTNESS   NODE
@@ -130,11 +130,11 @@ Once the node came back online, Longhorn recovered automatically:
 2. Missing replicas rebuilt in the background
 3. Stuck pods came up once volumes were available again
 
-The data was intact. Nothing lost. That's the value of replication — even with a single surviving replica on a different node, your data is safe.
+The data was intact. Nothing lost. That's the value of replication. Even with a single surviving replica on a different node, your data is safe.
 
 ## Lessons from the outage
 
-**Single-replica volumes are a trap.** I had five volumes with only one copy of their data. Any workload that matters should have at least two replicas — one replica means one hardware failure equals data inaccessible.
+**Single-replica volumes are a trap.** I had five volumes with only one copy of their data. Any workload that matters should have at least two replicas. One replica means one hardware failure equals data inaccessible.
 
 The real risk isn't a volume going faulted. It's a degraded volume (one replica surviving) staying that way long enough for the *second* node to have trouble. Prometheus alerts on degraded volumes. Don't wait nine days to find out.
 
@@ -183,7 +183,7 @@ spec:
   concurrency: 2
 ```
 
-Snapshots every 6 hours, retaining the last 8. This protects against accidental deletion and allows rollbacks, but snapshots are local — they live on the same nodes as the data itself.
+Snapshots every 6 hours, retaining the last 8. This protects against accidental deletion and allows rollbacks, but snapshots are local. They live on the same nodes as the data itself.
 
 For true disaster recovery, Longhorn can push backups to S3-compatible storage or NFS. That's next on my list.
 
@@ -191,7 +191,7 @@ For true disaster recovery, Longhorn can push backups to S3-compatible storage o
 
 **The UI is genuinely good.** You see replica placement at a glance, trigger manual snapshots, and watch rebuild progress in real time. Most Kubernetes storage tooling is miserable to operate. Longhorn isn't.
 
-Scaling is zero-config: add a new node, configure its Longhorn `Node` resource, and replicas start landing there automatically. Online volume expansion just works — bump the size in the manifest, Flux applies it, Longhorn resizes without a pod restart for most workloads. And it pairs well with Talos. The immutable OS model fits Longhorn's declarative approach. Disk management is config, not commands.
+Scaling is zero-config: add a new node, configure its Longhorn `Node` resource, and replicas start landing there automatically. Online volume expansion just works. Bump the size in the manifest, Flux applies it, and Longhorn resizes without a pod restart for most workloads. And it pairs well with Talos. The immutable OS model fits Longhorn's declarative approach. Disk management is config, not commands.
 
 ## What to watch out for
 
@@ -209,4 +209,4 @@ Longhorn fits that. Replication means a hardware failure isn't a data loss. Snap
 
 It's not enterprise storage. For a three-node homelab on mini PCs, surviving a nine-day node outage without losing a byte is enough proof it's the right call.
 
-<GitHubRepo repo="eduuh/kube-homelab" description="My homelab GitOps repo — Longhorn config lives in cluster/storage/" />
+<GitHubRepo repo="eduuh/kube-homelab" description="My homelab GitOps repo. Longhorn config lives in cluster/storage/" />

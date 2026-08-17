@@ -18,7 +18,7 @@ I needed to build 4 Docker images from a monorepo and push them to Azure Contain
 
 ## What I was going for
 
-Four services, four images, all pushed to `wira360.azurecr.io` automatically. Tags with the git SHA for traceability, plus `latest` for convenience. No stored secrets — OIDC for auth.
+Four services, four images, all pushed to `wira360.azurecr.io` automatically. Tags with the git SHA for traceability, plus `latest` for convenience. No stored secrets. OIDC for auth.
 
 ## The workflow (final version)
 
@@ -92,7 +92,7 @@ That gives you a username and password. Store them as GitHub secrets:
 
 ## The OIDC rabbit hole
 
-I originally wanted keyless auth — no stored secrets, just OIDC. The setup looks clean: create an app registration, add a federated credential pointing at your repo, grant it `AcrPush`, and use `azure/login@v2` in the workflow.
+I originally wanted keyless auth. No stored secrets, just OIDC. The setup looks clean: create an app registration, add a federated credential pointing at your repo, grant it `AcrPush`, and use `azure/login@v2` in the workflow.
 
 ```bash
 az ad app create --display-name "github-tracker-acr"

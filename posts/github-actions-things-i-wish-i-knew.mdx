@@ -13,7 +13,7 @@ tags:
   - CI/CD
 ---
 
-I've been setting up CI/CD for a monorepo recently and hit enough non-obvious things that it's worth writing down. These aren't basics — assume you've already written a workflow or two.
+I've been setting up CI/CD for a monorepo recently and hit enough non-obvious things that it's worth writing down. These aren't basics. Assume you've already written a workflow or two.
 
 ## Matrix strategy with `include`
 
@@ -38,7 +38,7 @@ Each entry in `include` is a set of variables available throughout the job as `$
 
 OIDC lets GitHub Actions authenticate to cloud providers without storing long-lived secrets. For AWS and GCP it's mostly painless. For Azure it mostly works, with one sharp edge.
 
-The setup is the usual dance: app registration, federated credential pointed at the repo, the right role assigned. The federated credential's audience **must** be `api://AzureADTokenExchange`. Not `api://AzureADTokenEndpoint`, which looks plausible but isn't — Azure returns `AADSTS700212` and the error message doesn't tell you why.
+The setup is the usual dance: app registration, federated credential pointed at the repo, the right role assigned. The federated credential's audience **must** be `api://AzureADTokenExchange`. Not `api://AzureADTokenEndpoint`, which looks plausible but isn't. Azure returns `AADSTS700212`, and the error message doesn't tell you why.
 
 ```yaml
 permissions:
@@ -50,7 +50,7 @@ The `permissions` block is required at the workflow or job level. Without `id-to
 
 ## The buildx credentials problem
 
-If you're using `docker/build-push-action`, you're using buildx. Buildx runs in its own container driver — it doesn't inherit Docker credentials from the runner's default context.
+If you're using `docker/build-push-action`, you're using buildx. Buildx runs in its own container driver. It doesn't inherit Docker credentials from the runner's default context.
 
 This means:
 
@@ -68,7 +68,7 @@ And even this fails:
     docker login myregistry.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password "$TOKEN"
 ```
 
-What works is `docker/login-action@v3` with credentials that survive the OAuth challenge — either basic auth (username/password) or a proper refresh token. For ACR, that means enabling admin credentials:
+What works is `docker/login-action@v3` with credentials that survive the OAuth challenge: either basic auth (username/password) or a proper refresh token. For ACR, that means enabling admin credentials:
 
 ```yaml
 - uses: docker/login-action@v3
@@ -89,7 +89,7 @@ Without caching, every run rebuilds from scratch. With registry cache, unchanged
     cache-to: type=registry,ref=myregistry.azurecr.io/myservice:cache,mode=max
 ```
 
-`mode=max` caches all layers, including intermediate ones. The first run is the same speed. Every run after is faster — how much faster depends on how much of your Dockerfile changes.
+`mode=max` caches all layers, including intermediate ones. The first run is the same speed. Every run after is faster. How much faster depends on how much of your Dockerfile changes.
 
 The `:cache` tag is just a convention. It'll be created on the first push.
 
