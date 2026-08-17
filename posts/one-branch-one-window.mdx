@@ -288,7 +288,7 @@ I'd lose my place. The dev server I had running pointed at the wrong checkout. T
 
 The fix turned out to be simple, and it's been the single biggest change to how I work in the terminal: **every branch is its own folder, and every folder is its own tmux window.**
 
-The scripts I reference live in [github.com/eduuh/dotfiles](https://github.com/eduuh/dotfiles) — copy them, or read them as a starting point and write your own.
+The scripts I reference live in [github.com/eduuh/dotfiles](https://github.com/eduuh/dotfiles). Copy them, or read them as a starting point and write your own.
 
 ## What you'll need
 
@@ -314,7 +314,7 @@ Two directories under `~/projects/`:
         └── fix-trailing-comma/
 ```
 
-Bare repos have no working tree — they're the "source of truth" for branches. Worktrees are the actual checkouts. Git has supported this since 2.5 (released 2015); it's not exotic.
+Bare repos have no working tree. They're the "source of truth" for branches. Worktrees are the actual checkouts. Git has supported this since 2.5 (released 2015); it's not exotic.
 
 Make the directories:
 
@@ -399,7 +399,7 @@ The two interesting bindings are `prefix + C-o` (project picker) and `prefix + o
 1. Lists every bare repo under `~/projects/bare/`.
 2. Sorts them by zoxide frecency (most-used first).
 3. Shows a preview of which sessions are open and what windows they have.
-4. Switches to the picked one — or creates the session if it doesn't exist yet.
+4. Switches to the picked one, or creates the session if it doesn't exist yet.
 
 It also has a creation shortcut: type `repo/branch` for a project that doesn't have a window for that branch, hit enter, and it creates the worktree, opens the window, and drops you in. No confirmation prompt.
 
@@ -415,7 +415,7 @@ Two panes: Claude on the left (pane 0), shell on the right (pane 1).
 
 ## 6. Worktrees as windows
 
-`prefix + o` opens [`tmux-wt.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tmux-wt.sh), a small fzf picker that lists every worktree for the current repo. Pick one, it opens as a new window in the current session — or focuses the existing window if there is one.
+`prefix + o` opens [`tmux-wt.sh`](https://github.com/eduuh/dotfiles/blob/main/.bin/tmux/tmux-wt.sh), a small fzf picker that lists every worktree for the current repo. Pick one, it opens as a new window in the current session, or focuses the existing window if there is one.
 
 If you type a branch name that doesn't exist as a worktree, hitting enter creates it from latest `main` and opens it. Same flow as `tat`, scoped to the current session.
 
@@ -462,7 +462,7 @@ I learned most of this by breaking it first.
 
 ## 8. The floating nvim that follows you
 
-Editor pane on the right is fine for `cat` and `ls`, but I don't like editing in a small pane. So `prefix + e` opens a full-screen nvim popup scoped to the current worktree. The nvim config itself lives in a separate post — [The nvim keybindings that earn their place](/blog/nvim-keybindings).
+Editor pane on the right is fine for `cat` and `ls`, but I don't like editing in a small pane. So `prefix + e` opens a full-screen nvim popup scoped to the current worktree. The nvim config itself lives in a separate post: [The nvim keybindings that earn their place](/blog/nvim-keybindings).
 
 Only one nvim session runs on the tmux server at any time. Switch worktrees, hit `prefix + e`, and the old session gets killed and a new one spawns at the new worktree's cwd. No stale buffers from yesterday's branch.
 
@@ -485,7 +485,7 @@ tmux has-session -t "=$session" || tmux new-session -d -s "$session" -c "$pane_p
 tmux popup -d "$pane_path" -xC -yC -w 97% -h 97% -E "tmux attach -t '=$session'"
 ```
 
-The hash of the path is just to make the session name unique per worktree. Pressing `prefix + e` again from inside the popup detaches — the popup closes, nvim keeps running. Press it once more from the same worktree, the same session reattaches with all your buffers intact.
+The hash of the path is just to make the session name unique per worktree. Pressing `prefix + e` again from inside the popup detaches. The popup closes, nvim keeps running. Press it once more from the same worktree, the same session reattaches with all your buffers intact.
 
 Bind it in `.tmux.conf`:
 
