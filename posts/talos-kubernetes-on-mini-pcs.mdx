@@ -3,7 +3,7 @@ title: "Provisioning a Talos Kubernetes Cluster on Mini PCs"
 slug: talos-kubernetes-on-mini-pcs
 publishedAt: '2026-04-19'
 summary: >-
-  Setting up a three-node Kubernetes cluster with Talos Linux — one control
+  Setting up a three-node Kubernetes cluster with Talos Linux: one control
   plane VM on Proxmox and two bare-metal worker mini PCs, bootstrapped via
   static IPs pinned by DHCP reservations in OPNsense.
 tags:
@@ -17,7 +17,7 @@ series:
   order: 9
 ---
 
-With [Proxmox up](/blog/installing-proxmox-ve), [OPNsense routing traffic](/blog/my-home-networking-opnsense), and DHCP pinned to deterministic IPs, the cluster itself can come online. My setup is three mini PCs running Talos Linux — one control plane VM on the firewall box, two workers on bare metal.
+With [Proxmox up](/blog/installing-proxmox-ve), [OPNsense routing traffic](/blog/my-home-networking-opnsense), and DHCP pinned to deterministic IPs, the cluster itself can come online. My setup is three mini PCs running Talos Linux. One control plane VM on the firewall box, two workers on bare metal.
 
 ## The cluster at a glance
 
@@ -35,7 +35,7 @@ Three reasons Talos wins over Ubuntu/k3s/Debian for a homelab cluster:
 
 1. **No SSH, no shell, no host-level drift.** Talos is API-driven. You configure it with a single YAML file applied via `talosctl`. You *cannot* accidentally `apt upgrade` yourself into a broken kernel or leave a root shell in bash history.
 2. **Immutable root filesystem.** Upgrades swap the whole OS image. Rollbacks are one command. No half-patched boxes.
-3. **Kubernetes-first.** Talos boots straight into containerd. Minimal surface area — fewer things to own, fewer things to break.
+3. **Kubernetes-first.** Talos boots straight into containerd. Minimal surface area, so fewer things to own and fewer things to break.
 
 The tradeoff: when something goes wrong, you can't just SSH in and poke. You debug through `talosctl logs`, `talosctl dmesg`, `talosctl read`. For a cluster you leave running, that's a feature.
 
@@ -49,9 +49,9 @@ The [Talos releases page](https://github.com/siderolabs/talos/releases/latest) l
 | `talosctl-darwin-arm64` | CLI for your Mac (or `linux-amd64` if you manage from a Linux box) |
 
 Everything else is special-case:
-- `metal-amd64.raw.zst` — for `qm importdisk` or `dd`-ing a physical disk; more steps than the ISO path
-- `metal-amd64-uki.efi` — direct UEFI boot; advanced
-- `vmlinuz-amd64` + `initramfs-amd64.xz` — PXE netboot
+- `metal-amd64.raw.zst` for `qm importdisk` or `dd`-ing a physical disk. More steps than the ISO path
+- `metal-amd64-uki.efi` for direct UEFI boot. Advanced
+- `vmlinuz-amd64` + `initramfs-amd64.xz` for PXE netboot
 
 **Verify the download:**
 ```bash
@@ -65,7 +65,7 @@ chmod +x ~/Downloads/talosctl-darwin-arm64
 mv ~/Downloads/talosctl-darwin-arm64 ~/.bin/talosctl
 ```
 
-## 1. Control plane — Talos VM on Proxmox
+## 1. Control plane: Talos VM on Proxmox
 
 The CP lives as a VM on the Glovary alongside OPNsense. One host, two workloads.
 
@@ -83,7 +83,7 @@ The CP lives as a VM on the Glovary alongside OPNsense. One host, two workloads.
 | Memory | `4096` MiB, Ballooning ❌, KSM ❌ |
 | Network | `vmbr2` (LAN), VirtIO, Firewall ❌, Multiqueue `2` |
 
-Same UEFI + GPT gotchas as OPNsense — UEFI machine ⇒ GPT partition scheme ⇒ Talos boots.
+Same UEFI + GPT gotchas as OPNsense. UEFI machine ⇒ GPT partition scheme ⇒ Talos boots.
 
 **Boot the VM.** Talos install is hands-off:
 1. Boots the live ISO into a maintenance mode
@@ -92,7 +92,7 @@ Same UEFI + GPT gotchas as OPNsense — UEFI machine ⇒ GPT partition scheme �
 
 No installer prompts. No partitioning dialogs. Just an IP and a pending config.
 
-## 2. Workers — Talos on bare metal
+## 2. Workers: Talos on bare metal
 
 For the AMD and ACEMAGIC mini PCs, the exact same ISO flashes to a USB stick:
 
@@ -103,12 +103,12 @@ diskutil unmountDisk /dev/disk4
 sudo dd if=metal-amd64.iso of=/dev/rdisk4 bs=1m status=progress
 ```
 
-*(If `dd` rejects `bs=1m` — [you're on GNU dd](/blog/dd-block-size-bsd-vs-gnu); use `bs=1M`.)*
+*(If `dd` rejects `bs=1m`, [you're on GNU dd](/blog/dd-block-size-bsd-vs-gnu). Use `bs=1M`.)*
 
 Boot each mini PC from the USB. Talos:
 1. Detects hardware, brings up the primary NIC
 2. Grabs its reserved IP via DHCP
-3. Waits in maintenance mode — same as the CP VM
+3. Waits in maintenance mode, same as the CP VM
 
 The workers don't need any keyboard/mouse interaction after the BIOS boot menu. Once they're sitting at their reserved IPs, you can walk away from the hardware and drive everything from your laptop.
 
@@ -122,9 +122,9 @@ talosctl gen config homelab https://10.0.0.201:6443
 ```
 
 This produces three files:
-- `controlplane.yaml` — config for the CP node
-- `worker.yaml` — config for workers
-- `talosconfig` — the client certificate bundle
+- `controlplane.yaml` is the config for the CP node
+- `worker.yaml` is the config for workers
+- `talosconfig` is the client certificate bundle
 
 Move `talosconfig` into place so `talosctl` finds it:
 ```bash
@@ -187,9 +187,9 @@ Then in OPNsense → **Services → Kea DHCPv4 → Reservations**, add a host re
 
 ## What tripped me up (historic)
 
-- **`10.0.0.x` vs `192.168.1.x`** — my original Talos config was pinned to `10.0.0.x`, so when I first brought OPNsense up with the default `192.168.1.1/24` LAN, nothing could talk. Fix: [move OPNsense LAN to `10.0.0.0/24`](/blog/my-home-networking-opnsense) so the existing Talos config just works. Cheaper than re-applying machineconfigs to three nodes.
-- **Kubernetes API reachability** — `10.0.0.201:6443` is LAN-only. From outside (e.g. an Azure node you add later), you need either a port forward, WireGuard, or [KubeSpan](https://www.talos.dev/v1.11/kubernetes-guides/network/kubespan/). My plan is KubeSpan, but it needs a reachable peer discovery endpoint — see `fix-azure-etcd.sh` in my branch notes.
-- **Don't `bootstrap` twice.** Running `talosctl bootstrap` on a control plane that already has an etcd cluster will corrupt state. There's a reason it's a separate command — it's the one you run exactly once.
+- **`10.0.0.x` vs `192.168.1.x`.** My original Talos config was pinned to `10.0.0.x`, so when I first brought OPNsense up with the default `192.168.1.1/24` LAN, nothing could talk. Fix: [move OPNsense LAN to `10.0.0.0/24`](/blog/my-home-networking-opnsense) so the existing Talos config just works. Cheaper than re-applying machineconfigs to three nodes.
+- **Kubernetes API reachability.** `10.0.0.201:6443` is LAN-only. From outside (e.g. an Azure node you add later), you need either a port forward, WireGuard, or [KubeSpan](https://www.talos.dev/v1.11/kubernetes-guides/network/kubespan/). My plan is KubeSpan, but it needs a reachable peer discovery endpoint. See `fix-azure-etcd.sh` in my branch notes.
+- **Don't `bootstrap` twice.** Running `talosctl bootstrap` on a control plane that already has an etcd cluster will corrupt state. There's a reason it's a separate command. It's the one you run exactly once.
 
 ## What's next
 
@@ -199,6 +199,6 @@ With three nodes `Ready`, the cluster is functional but bare. Next in this serie
 - Storage: Longhorn or Rook-Ceph on the ACEMAGIC's NVMe
 - GitOps: FluxCD reconciling from a bare repo
 - Ingress + cert-manager + LetsEncrypt via DNS-01 (since the API is LAN-only)
-- Observability — [visualizing the whole rack in Grafana](/blog/god-mode-visualizing-infrastructure)
+- Observability: [visualizing the whole rack in Grafana](/blog/god-mode-visualizing-infrastructure)
 
 That's the ladder. One rung at a time.

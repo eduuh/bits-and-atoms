@@ -2,7 +2,7 @@
 title: "The Proxmox Post-Install Script I Run on Every Node"
 slug: proxmox-post-install-script
 publishedAt: '2026-04-18'
-summary: A single curl-bash from community-scripts.org does the tedious post-install cleanup — no-subscription repos, nag removal, HA toggle, dist-upgrade.
+summary: A single curl-bash from community-scripts.org does the tedious post-install cleanup: no-subscription repos, nag removal, HA toggle, dist-upgrade.
 tags:
   - Linux
   - Self-Hosted
@@ -17,7 +17,7 @@ Every fresh Proxmox install needs the same boring set of edits: comment out the 
 
 ## The one-liner
 
-**Run this as root**, straight after [creating your admin user](/blog/proxmox-first-login-admin-user). The script edits `/etc/apt/sources.list.d/`, enables/disables systemd services, and runs `dist-upgrade` — it needs full privileges, and `sudo` won't work from your admin user without extra plumbing:
+**Run this as root**, straight after [creating your admin user](/blog/proxmox-first-login-admin-user). The script edits `/etc/apt/sources.list.d/`, enables/disables systemd services, and runs `dist-upgrade`. It needs full privileges, and `sudo` won't work from your admin user without extra plumbing:
 
 ```bash
 # SSH in as root one more time
@@ -26,9 +26,9 @@ ssh root@<node-ip>
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/post-pve-install.sh)"
 ```
 
-If you've already disabled root SSH login (good!), run it from the **node's physical or web console** instead — the Shell tab in the Proxmox UI opens a root session, which works fine.
+If you've already disabled root SSH login (good!), run it from the **node's physical or web console** instead. The Shell tab in the Proxmox UI opens a root session, which works fine.
 
-It's interactive — a series of dialog prompts for each change — so you can skip anything you don't want. For a homelab node, the answers are almost always the same.
+It's interactive, a series of dialog prompts for each change, so you can skip anything you don't want. For a homelab node, the answers are almost always the same.
 
 ## Walking through the prompts
 
@@ -54,7 +54,7 @@ What do you want to do?
   skip  Skip this step
 ```
 
-→ **add**. This is the free community repo that replaces enterprise for homelab use. Without it you get no updates at all — kernel, `pve-manager`, nothing. Adding this is the whole reason most people run the script in the first place.
+→ **add**. This is the free community repo that replaces enterprise for homelab use. Without it you get no updates at all. No kernel, no `pve-manager`, nothing. Adding this is the whole reason most people run the script in the first place.
 
 **3. `pvetest` repository**
 
@@ -66,7 +66,7 @@ What do you want to do?
   disable  Comment out (disable) this repo
 ```
 
-→ **disable**. `pvetest` is the pre-release channel — fresh kernels, fresh bugs. Enable this if you're actively testing upcoming Proxmox releases or chasing a fix that's only landed in test. For a node that's meant to just *run*, keep it commented out.
+→ **disable**. `pvetest` is the pre-release channel. Fresh kernels, fresh bugs. Enable this if you're actively testing upcoming Proxmox releases or chasing a fix that's only landed in test. For a node that's meant to just *run*, keep it commented out.
 
 **4. Subscription nag**
 
@@ -78,7 +78,7 @@ What do you want to do?
   keep     Keep the nag popup
 ```
 
-→ **disable**. The "No valid subscription" modal appears on every web UI login and blocks the screen until you dismiss it. Disabling patches the JS and installs an APT hook so future upgrades don't bring it back. Purely cosmetic — no effect on updates, cluster behavior, or anything else.
+→ **disable**. The "No valid subscription" modal appears on every web UI login and blocks the screen until you dismiss it. Disabling patches the JS and installs an APT hook so future upgrades don't bring it back. Purely cosmetic. No effect on updates, cluster behavior, or anything else.
 
 **5. High Availability services**
 
@@ -102,7 +102,7 @@ What do you want to do?
   keep     Leave corosync running
 ```
 
-→ **disable**. Corosync is the cluster messaging layer that HA rides on — if HA is off and you're running a single node, corosync has nothing to coordinate. Disabling it stops the chatter and the log noise. Same caveat as HA: turn it back on the day you build a cluster.
+→ **disable**. Corosync is the cluster messaging layer that HA rides on. If HA is off and you're running a single node, corosync has nothing to coordinate. Disabling it stops the chatter and the log noise. Same caveat as HA: turn it back on the day you build a cluster.
 
 **7. Update the system**
 
@@ -129,9 +129,9 @@ It detects whether you're on PVE 8.x or 9.x and picks the right repo format (cla
 
 **Repositories**
 - Disables `pve-enterprise` (the one that nags if you don't have a subscription)
-- Enables `pve-no-subscription` — free updates for homelab use
+- Enables `pve-no-subscription`, so you get free updates for homelab use
 - Writes the Debian sources (`bookworm` or `trixie`) with `main contrib`
-- Adds Ceph and pvetest repos but leaves them **commented out** — available if you want them, not active by default
+- Adds Ceph and pvetest repos but leaves them **commented out**, available if you want them, not active by default
 
 **The subscription nag**
 - Patches the web UI JavaScript so the "No valid subscription" popup stops appearing on login
@@ -154,7 +154,7 @@ HA only matters in a multi-node cluster. On a single mini-PC node, disabling the
 
 Fair question. Three things that make me comfortable with this one:
 
-1. **It's open** — [the source](https://github.com/community-scripts/ProxmoxVE/blob/main/tools/pve/post-pve-install.sh) is on GitHub, reviewable before you run it.
+1. **It's open.** [The source](https://github.com/community-scripts/ProxmoxVE/blob/main/tools/pve/post-pve-install.sh) is on GitHub, reviewable before you run it.
 2. **The community-scripts project is well-known** in the Proxmox space, with many contributors and public issues.
 3. **A fresh node has nothing to lose.** I run this immediately after install, before any VMs or data exist. Worst case: reinstall.
 

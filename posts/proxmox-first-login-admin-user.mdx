@@ -22,7 +22,7 @@ Tempting to just log in and start building. Don't.
 Two reasons:
 
 1. **Blast radius.** Every click in the UI as root is a privileged action. Misclick a checkbox and you've deleted a pool. With a scoped admin user, the worst bad clicks are recoverable.
-2. **Audit trail.** When something breaks at 11pm, `root` in the logs tells you nothing. `edd@pam` tells you who — even in a single-admin homelab, that future-you looking at logs will thank present-you.
+2. **Audit trail.** When something breaks at 11pm, `root` in the logs tells you nothing. `edd@pam` tells you who. Even in a single-admin homelab, that future-you looking at logs will thank present-you.
 
 ## Realms: the thing that confused me first
 
@@ -33,7 +33,7 @@ Proxmox separates *where a user lives* from *what a user can do*. The "where" is
 | `@pam` | Linux `/etc/passwd` | Yes | You, the admin |
 | `@pve` | Proxmox's own DB | No | API keys, scoped UI-only users |
 
-Your Linux user (`edd`) and your Proxmox user (`edd@pam`) are two sides of the same account — create the Linux side first, then tell Proxmox about it.
+Your Linux user (`edd`) and your Proxmox user (`edd@pam`) are two sides of the same account. Create the Linux side first, then tell Proxmox about it.
 
 ## The three commands
 
@@ -64,7 +64,7 @@ pveum user list
 pveum acl list
 ```
 
-Log out. Log back into the web UI as `edd@pam`. Everything root could do, you can do — with your name attached to it.
+Log out. Log back into the web UI as `edd@pam`. Everything root could do, you can do, with your name attached to it.
 
 ## Lock the front door
 
@@ -99,10 +99,10 @@ pveum acl modify / --users automation@pve --roles PVEVMAdmin
 pveum user token add automation@pve main --privsep 0
 ```
 
-That last command prints a token once. Copy it immediately — it's not shown again. Use it in scripts instead of hardcoding your own password anywhere.
+That last command prints a token once. Copy it immediately. It's not shown again. Use it in scripts instead of hardcoding your own password anywhere.
 
 ## What I used to do wrong
 
-For my first few Proxmox installs I lived as root "just until I had things working." *Things working* never happened — every new VM introduced one more reason to stay root. A fresh install is the cheapest moment to do this right.
+For my first few Proxmox installs I lived as root "just until I had things working." *Things working* never happened. Every new VM introduced one more reason to stay root. A fresh install is the cheapest moment to do this right.
 
 Ten minutes of setup now. Zero anxiety later about what's in the audit logs.
