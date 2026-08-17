@@ -44,7 +44,7 @@ The reason `;;` and not, say, `<leader>e`: `<leader>` sequences cost a timeout d
 map({ "i", "n" }, "<C-s>", "<cmd>w<CR>", { desc = "Save buffer" })
 ```
 
-Vim purists will tell you that you shouldn't save from insert mode — use <Kbd>Esc</Kbd> then <Kbd>:w</Kbd>. They're right that it leaves you in insert mode after saving, which is weird. They're wrong that this matters. I save twenty times an hour and leaving insert mode to do it was burning through my wrist budget.
+Vim purists will tell you that you shouldn't save from insert mode. Use <Kbd>Esc</Kbd> then <Kbd>:w</Kbd>. They're right that it leaves you in insert mode after saving, which is weird. They're wrong that this matters. I save twenty times an hour and leaving insert mode to do it was burning through my wrist budget.
 
 The one thing I lost: LSP signature help used to be on `<C-s>` by default (Nvim 0.11+). I didn't use it enough to care. That's the trade-off I'm happy with.
 
@@ -74,7 +74,7 @@ For anything that isn't a hunk-level action (viewing commit history, checking ou
 { ";c", function() vim.cmd.LazyGit() end }
 ```
 
-<Kbd>;c</Kbd> opens it as a floating terminal. That's my "git TUI" escape hatch. nvim itself also runs as a floating popup, managed by tmux and scoped to the current git worktree — the wiring is in [One branch, one window](/blog/one-branch-one-window).
+<Kbd>;c</Kbd> opens it as a floating terminal. That's my "git TUI" escape hatch. nvim itself also runs as a floating popup, managed by tmux and scoped to the current git worktree. The wiring is in [One branch, one window](/blog/one-branch-one-window).
 
 ## LSP: the 0.11 built-in defaults
 
@@ -90,7 +90,7 @@ This is the section where I deleted the most keymaps. Nvim 0.11 ships with these
 | <Kbd>grt</Kbd> | Type definition |
 | <Kbd>grx</Kbd> | Code lens (0.12) |
 
-I used to map `<leader>rn`, `<leader>ca`, `<leader>gd`, a whole grid of `<leader>` stuff. Then I found out Neovim was shipping sensible defaults and mine were worse. The defaults also play nicely with fzf-lua — it intercepts `vim.ui.select` so `grr` and `gri` pop up an fzf picker instead of a minimalist floating list.
+I used to map `<leader>rn`, `<leader>ca`, `<leader>gd`, a whole grid of `<leader>` stuff. Then I found out Neovim was shipping sensible defaults and mine were worse. The defaults also play nicely with fzf-lua. It intercepts `vim.ui.select`, so `grr` and `gri` pop up an fzf picker instead of a minimalist floating list.
 
 ## Fuzzy: `<C-p>` for files
 
@@ -105,7 +105,7 @@ map("n", "<leader>fw", fzf.live_grep)
 
 What I removed in the same pass, for honesty.
 
-`<leader>ld`, `<leader>li`, and `<leader>lt` were LSP navigation maps that duplicated `gd`, `gi`, and `gt` from the built-in defaults. The Treesitter text-object maps (`af`, `ic`, `aa`, and friends) sounded clever but I never reached for them; the general vim text objects (`iw`, `ip`, `i"`, `i(`) cover 95% of what I actually needed. A competitive-programming plugin had `;r` and `;a` mapped — I haven't done competitive programming in five years and they were dead weight. And every AI plugin keymap went too. I closed that door and went back to a quieter editor.
+`<leader>ld`, `<leader>li`, and `<leader>lt` were LSP navigation maps that duplicated `gd`, `gi`, and `gt` from the built-in defaults. The Treesitter text-object maps (`af`, `ic`, `aa`, and friends) sounded clever but I never reached for them; the general vim text objects (`iw`, `ip`, `i"`, `i(`) cover 95% of what I actually needed. A competitive-programming plugin had `;r` and `;a` mapped. I haven't done competitive programming in five years and they were dead weight. And every AI plugin keymap went too. I closed that door and went back to a quieter editor.
 
 The test I apply, stolen from the woodworking people: if you don't reach for a tool in six months, it goes in a drawer. If you don't reach for it in a year, it leaves the shop.
 
