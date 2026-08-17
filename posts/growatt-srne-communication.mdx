@@ -4,7 +4,7 @@ slug: growatt-srne-communication
 publishedAt: '2026-07-10'
 summary: >-
   How to get a Growatt SPF inverter to read an SRNE LiFePO4 battery's real state
-  of charge over a two-wire CAN link — the exact pins, protocol, and settings.
+  of charge over a two-wire CAN link: the exact pins, protocol, and settings.
 tags:
   - Infrastructure
   - Smart Home
@@ -19,13 +19,13 @@ tldr: >-
   straight-through), then set Program 05 = LI and Program 36 = 52. The inverter
   then reads real SOC from the battery BMS.
 keyTakeaways:
-  - CAN uses only RJ45 pins 4 (CAN-H) and 5 (CAN-L) — the blue pair, identical in T568A and T568B.
+  - CAN uses only RJ45 pins 4 (CAN-H) and 5 (CAN-L), the blue pair, identical in T568A and T568B.
   - Inverter settings that work: Program 05 = LI, Program 36 = 52 (Pylontech-style CAN).
   - The battery manual's "cut pins 1 & 2" note is for SRNE-brand inverters, not Growatt.
   - Voltage-based SOC on LiFePO4 is a guess; the BMS link gives the real number and hands charge control to the BMS.
 ---
 
-I went looking for a single write-up pairing a **Growatt SPF** inverter with **SRNE** LiFePO4 batteries over a BMS link, and found nothing. Plenty on Pylontech, Deye, Victron — nothing on this exact combo. So here's what actually worked, details first.
+I went looking for a single write-up pairing a **Growatt SPF** inverter with **SRNE** LiFePO4 batteries over a BMS link, and found nothing. Plenty on Pylontech, Deye, Victron. Nothing on this exact combo. So here's what actually worked, details first.
 
 ## The short version
 
@@ -47,7 +47,7 @@ If you only take one thing: **two wires (pins 4 and 5) and two menu settings.** 
 
 ## Why bother
 
-Out of the box the inverter runs a generic battery profile and estimates state of charge (SOC) from terminal voltage. On LiFePO4 that's close to useless — the discharge curve is flat, so ~25.6 V could mean 30% or 80% full. Wiring the BMS link gets you two things:
+Out of the box the inverter runs a generic battery profile and estimates state of charge (SOC) from terminal voltage. On LiFePO4 that's close to useless. The discharge curve is flat, so ~25.6 V could mean 30% or 80% full. Wiring the BMS link gets you two things:
 
 - The **real** SOC, reported by the battery's own BMS.
 - **Charge control handed to the BMS**, instead of hand-typed voltage set-points.
@@ -58,19 +58,19 @@ The comms port is a standard RJ45 jack (same connector as Ethernet), but only tw
 
 | Pin | Battery port | Growatt BMS port | For CAN |
 |----:|--------------|------------------|---------|
-| 1 | RS485-B | RS485-B | — |
-| 2 | RS485-A | RS485-A | — |
+| 1 | RS485-B | RS485-B | none |
+| 2 | RS485-A | RS485-A | none |
 | 4 | CAN-H | CAN-H | **keep** |
 | 5 | CAN-L | CAN-L | **keep** |
 
-Wire it **straight-through** — Growatt pin 4 → battery pin 4, pin 5 → pin 5 — and do **not** swap CAN-H and CAN-L. I cut a spare cable down to just the blue pair, left the far end as a normal plug, and checked continuity with a multimeter before plugging in.
+Wire it **straight-through**. Growatt pin 4 → battery pin 4, pin 5 → pin 5. And do **not** swap CAN-H and CAN-L. I cut a spare cable down to just the blue pair, left the far end as a normal plug, and checked continuity with a multimeter before plugging in.
 
 <Callout type="warning" title="Ignore the 'cut pins 1 & 2' note">
-  The SRNE battery manual says to cut pins 1 & 2 if you use a standard network cable. That instruction is for connecting to an **SRNE-brand inverter** (which runs RS485 on pins 7 & 8). A **Growatt** uses RS485 on pins 1 & 2 and CAN on pins 4 & 5 — cutting 1 & 2 would remove wires you might need. For CAN it doesn't matter either way, but don't follow it blindly.
+  The SRNE battery manual says to cut pins 1 & 2 if you use a standard network cable. That instruction is for connecting to an **SRNE-brand inverter** (which runs RS485 on pins 7 & 8). A **Growatt** uses RS485 on pins 1 & 2 and CAN on pins 4 & 5, so cutting 1 & 2 would remove wires you might need. For CAN it doesn't matter either way, but don't follow it blindly.
 </Callout>
 
 <Callout type="tip" title="The blue pair is standard-proof">
-  Pins 4 and 5 are the **blue pair** — solid blue (CAN-H) and white/blue (CAN-L) — sitting dead center in the connector. Ethernet's two wiring standards (T568A/T568B) only swap the orange and green pairs; **the blue pair never moves**. So for CAN you can ignore which standard your cable is: grab the two middle wires.
+  Pins 4 and 5 are the **blue pair**, solid blue (CAN-H) and white/blue (CAN-L), sitting dead center in the connector. Ethernet's two wiring standards (T568A/T568B) only swap the orange and green pairs; **the blue pair never moves**. So for CAN you can ignore which standard your cable is: grab the two middle wires.
 </Callout>
 
 ## The settings
@@ -82,9 +82,9 @@ Program 05  →  LI      (battery type: lithium / BMS mode)
 Program 36  →  52       (CAN protocol)
 ```
 
-Setting **Program 05 = `LI`** changes the inverter's behaviour: the max-charge-current setting locks (the BMS owns it now) and the charge/discharge limits switch from volts to a **percentage** — that percentage is your proof the link is live.
+Setting **Program 05 = `LI`** changes the inverter's behaviour: the max-charge-current setting locks (the BMS owns it now) and the charge/discharge limits switch from volts to a **percentage**. That percentage is your proof the link is live.
 
-**Program 36** picks the protocol. Growatt groups them by bus: RS485 in the **1–50** range, CAN in **51–99**. SRNE's LFP packs speak Pylontech-style CAN, which lands on **52**. Neither manual prints the exact number — both say "ask the battery maker" — but 52 is the one that worked.
+**Program 36** picks the protocol. Growatt groups them by bus: RS485 in the **1 to 50** range, CAN in **51 to 99**. SRNE's LFP packs speak Pylontech-style CAN, which lands on **52**. Neither manual prints the exact number. Both say "ask the battery maker". 52 is the one that worked.
 
 ## Confirming it worked
 
@@ -94,7 +94,7 @@ The link is up when **all** of these are true:
 - Programs 12/13 read in **%**, not volts.
 - No BMS/comms fault, and the inverter doesn't cut output.
 
-If CAN won't link, step through the other CAN numbers (51–99), then switch to an RS485 cable on **pins 1 & 2** and try the 1–50 range.
+If CAN won't link, step through the other CAN numbers (51 to 99), then switch to an RS485 cable on **pins 1 & 2** and try the 1 to 50 range.
 
 ## Two batteries, one voice
 
@@ -108,4 +108,4 @@ Once comms are up, the two report to the inverter as a single 5.12 kWh pack with
 
 ---
 
-This is part two of my home power setup — part one, [the backup system itself](/blog/my-power-backup-system), covers the inverter and battery choice. If you're pairing Growatt with SRNE and this saved you an afternoon, that was the whole point.
+This is part two of my home power setup. Part one, [the backup system itself](/blog/my-power-backup-system), covers the inverter and battery choice. If you're pairing Growatt with SRNE and this saved you an afternoon, that was the whole point.

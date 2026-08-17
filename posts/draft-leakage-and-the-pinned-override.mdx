@@ -36,8 +36,8 @@ That reasoning was wrong, and it took me a few weeks to notice.
 
 ## What actually happened
 
-Five posts — all early drafts I had pinned because I wanted them
-top-of-mind while writing — were live on production this whole time:
+Five posts were live on production this whole time. All early drafts
+I had pinned because I wanted them top-of-mind while writing:
 
 - *Building a Modern Developer Blog*
 - *My Future Smart Home*
@@ -70,10 +70,10 @@ if (isDraft(frontmatter) && !SHOW_DRAFTS) {
 
 Two things to notice:
 
-1. **Drafts are still visible locally** — `NODE_ENV !== 'production'`
+1. **Drafts are still visible locally.** `NODE_ENV !== 'production'`
    keeps the existing authoring workflow working. I can still see
    what I'm writing while I write it.
-2. **There's an explicit opt-in** — `SHOW_DRAFTS=true` lets me
+2. **There's an explicit opt-in.** `SHOW_DRAFTS=true` lets me
    preview drafts in a prod-like build (e.g. on a staging deploy)
    without touching the source filter. That's a less surprising knob
    than the previous "pinned implicitly overrides draft" magic.

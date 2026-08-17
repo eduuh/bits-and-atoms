@@ -83,7 +83,7 @@ Top-right Create VM. Settings per tab follow.
 ### System
 
 - Machine: `q35`
-- BIOS: `OVMF (UEFI)` — modern, required for clean PCIe passthrough later
+- BIOS: `OVMF (UEFI)`. Modern, and required for clean PCIe passthrough later
 - Add EFI disk: ✅, on `local-lvm`
 - Pre-Enroll keys: ❌ (not needed for a FreeBSD guest)
 - SCSI Controller: `VirtIO SCSI single`
@@ -127,7 +127,7 @@ On the VM: Hardware → Add → Network Device. Do this twice.
 | 1st → `net0` → `vtnet0` → WAN | `vmbr1` | VirtIO | ❌ | 2 |
 | 2nd → `net1` → `vtnet1` → LAN | `vmbr2` | VirtIO | ❌ | 2 |
 
-Three things matter here. Leave Firewall unchecked on both: OPNsense *is* the firewall, so Proxmox's bridge-level filter would double-filter and hide drops from OPNsense's logs. Set Multiqueue to your vCPU count — VirtIO defaults to a single send/receive queue per NIC, which bottlenecks throughput. And order matters: OPNsense sees NICs in attachment order, so the first added (`vtnet0`) becomes WAN.
+Three things matter here. Leave Firewall unchecked on both: OPNsense *is* the firewall, so Proxmox's bridge-level filter would double-filter and hide drops from OPNsense's logs. Set Multiqueue to your vCPU count. VirtIO defaults to a single send/receive queue per NIC, which bottlenecks throughput. And order matters: OPNsense sees NICs in attachment order, so the first added (`vtnet0`) becomes WAN.
 
 ## 5. Verify and boot
 
@@ -141,7 +141,7 @@ Start the VM, open the Console.
 
 Log in as `installer` / `opnsense`.
 
-Accept the default keymap. Pick Install (UFS) — UFS over ZFS for a firewall VM, since ZFS wants 8 GB+ for ARC to perform well and Proxmox does VM-level snapshots via LVM anyway, so you don't get much from ZFS-inside-guest. Use the GPT partition scheme: it's required because you set the VM to UEFI (OVMF), and MBR is legacy BIOS only; picking MBR here results in a VM that won't boot.
+Accept the default keymap. Pick Install (UFS). UFS beats ZFS for a firewall VM, since ZFS wants 8 GB+ for ARC to perform well and Proxmox does VM-level snapshots via LVM anyway, so you don't get much from ZFS-inside-guest. Use the GPT partition scheme: it's required because you set the VM to UEFI (OVMF), and MBR is legacy BIOS only; picking MBR here results in a VM that won't boot.
 
 Select `da0` as the destination disk (your 40 GB VirtIO SCSI disk). Confirm "destroy all data on da0". The installer copies files for one to three minutes. Set a strong root password, *different from your Proxmox root password*. Complete Install, then Reboot.
 
@@ -171,7 +171,7 @@ From a machine on the LAN bridge:
 https://192.168.1.1
 ```
 
-Log in as `root` with the password you set. Accept the self-signed cert warning — expected on first boot. The **Setup Wizard** launches: timezone, DNS, LAN subnet. Take your time. This is the foundation everything else sits on.
+Log in as `root` with the password you set. Accept the self-signed cert warning. Expected on first boot. The **Setup Wizard** launches: timezone, DNS, LAN subnet. Take your time. This is the foundation everything else sits on.
 
 ## What tripped me up
 

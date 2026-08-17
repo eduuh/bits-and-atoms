@@ -19,7 +19,7 @@ Here's the full picture, including the parts that go sideways.
 
 ## The goal
 
-I run a [Solar Assistant](https://solar-assistant.io/) instance — a Pi that monitors my solar inverter and battery bank. Every time I needed to check something on it, I had to type a password. I wanted to stop doing that.
+I run a [Solar Assistant](https://solar-assistant.io/) instance, a Pi that monitors my solar inverter and battery bank. Every time I needed to check something on it, I had to type a password. I wanted to stop doing that.
 
 The setup: Mac → SSH → `solar-assistant@192.168.1.20`.
 
@@ -31,7 +31,7 @@ Before generating a new key, look at what's already there:
 ls ~/.ssh/*.pub
 ```
 
-Most machines that have seen any development work already have a key. I had `id_ed25519.pub` and `id_rsa.pub`. Ed25519 is the one you want — smaller, faster, more secure than RSA.
+Most machines that have seen any development work already have a key. I had `id_ed25519.pub` and `id_rsa.pub`. Ed25519 is the one you want. Smaller, faster, more secure than RSA.
 
 No keys? Generate one:
 
@@ -116,7 +116,7 @@ The `IdentitiesOnly yes` line is doing real work here. Without it, the agent wil
 
 ## One Pi, two services
 
-Once SSH was sorted I added [Pi-hole](https://pi-hole.net/) to the same Pi. Solar Assistant is an Elixir app running on `beam.smp` — it owns port 80. Pi-hole's web admin also wants port 80. They fight.
+Once SSH was sorted I added [Pi-hole](https://pi-hole.net/) to the same Pi. Solar Assistant is an Elixir app running on `beam.smp`, and it owns port 80. Pi-hole's web admin also wants port 80. They fight.
 
 The error is subtle. Pi-hole installs fine and DNS works (port 53 is free), but navigating to `http://192.168.1.20/admin` just shows Solar Assistant's dashboard. Pi-hole lost the port 80 race and its admin interface is silently gone.
 
@@ -127,7 +127,7 @@ The fix is one line in `/etc/pihole/pihole.toml`:
   port = "8080,[::]:8080"
 ```
 
-Default is `"80o,443os,[::]:80o,[::]:443os"`. The `o` suffix means optional — Pi-hole won't crash if the port is taken, it just quietly skips it. Change it to `8080`, restart the service, and both live happily on the same box:
+Default is `"80o,443os,[::]:80o,[::]:443os"`. The `o` suffix means optional. Pi-hole won't crash if the port is taken, it just quietly skips it. Change it to `8080`, restart the service, and both live happily on the same box:
 
 | Service | URL |
 |---------|-----|
@@ -150,7 +150,7 @@ DNS filtering starts the moment you set `192.168.1.20` as the DNS server in your
 5. First login attempt failed for the same reason.
 6. Added `IdentitiesOnly=yes`. Connection succeeded.
 7. Wrote the `~/.ssh/config` entry so the flags are never needed again.
-8. Added Pi-hole. Port 80 conflict with Solar Assistant — Pi-hole admin silently missing.
+8. Added Pi-hole. Port 80 conflict with Solar Assistant, so Pi-hole admin was silently missing.
 9. Moved Pi-hole web admin to port 8080 in `pihole.toml`. Both services up.
 10. Assigned static IP `192.168.1.20`. Updated `known_hosts`. Done.
 
@@ -158,4 +158,4 @@ The whole thing took about twenty minutes. Most of that was the same `MaxAuthTri
 
 ---
 
-*`IdentitiesOnly yes` is doing a lot of quiet work here. Same goes for the `o` suffix in Pi-hole's port config — both are "optional" flags that prevent one service from blocking everything else. Worth knowing they exist before you spend twenty minutes debugging.*
+*`IdentitiesOnly yes` is doing a lot of quiet work here. Same goes for the `o` suffix in Pi-hole's port config. Both are "optional" flags that prevent one service from blocking everything else. Worth knowing they exist before you spend twenty minutes debugging.*

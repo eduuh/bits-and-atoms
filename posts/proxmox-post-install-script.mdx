@@ -2,7 +2,7 @@
 title: "The Proxmox Post-Install Script I Run on Every Node"
 slug: proxmox-post-install-script
 publishedAt: '2026-04-18'
-summary: A single curl-bash from community-scripts.org does the tedious post-install cleanup — no-subscription repos, nag removal, HA toggle, dist-upgrade.
+summary: A single curl-bash from community-scripts.org does the tedious post-install cleanup: no-subscription repos, nag removal, HA toggle, dist-upgrade.
 tags:
   - Linux
   - Self-Hosted
@@ -32,7 +32,7 @@ The script is interactive: a series of dialog prompts for each change, so you ca
 
 ## Walking through the prompts
 
-The first three prompts are about repos. Disable `pve-enterprise` — it requires a paid subscription key, and leaving it on makes every `apt update` noisy with 401 errors. Add `pve-no-subscription`, the free community repo that replaces enterprise for homelab use. Without it you get no kernel updates, no `pve-manager` updates, nothing. Disable `pvetest`, the pre-release channel of fresh kernels and fresh bugs. Enable that one only if you're chasing a fix that's only landed in test.
+The first three prompts are about repos. Disable `pve-enterprise`. It requires a paid subscription key, and leaving it on makes every `apt update` noisy with 401 errors. Add `pve-no-subscription`, the free community repo that replaces enterprise for homelab use. Without it you get no kernel updates, no `pve-manager` updates, nothing. Disable `pvetest`, the pre-release channel of fresh kernels and fresh bugs. Enable that one only if you're chasing a fix that's only landed in test.
 
 The next prompt asks about the subscription nag, the "No valid subscription" modal that blocks the web UI on every login. Disable it. The script patches the JS and installs an APT hook so future upgrades don't bring it back. Purely cosmetic, no effect on updates or cluster behavior, but I notice the silence.
 

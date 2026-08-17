@@ -44,7 +44,7 @@ The reason `;;` and not, say, `<leader>e`: `<leader>` sequences cost a timeout d
 map({ "i", "n" }, "<C-s>", "<cmd>w<CR>", { desc = "Save buffer" })
 ```
 
-Vim purists will tell you that you shouldn't save from insert mode — use <Kbd>Esc</Kbd> then <Kbd>:w</Kbd>. They're right that it leaves you in insert mode after saving, which is weird. They're wrong that this matters. I save twenty times an hour and leaving insert mode to do it was burning through my wrist budget.
+Vim purists will tell you that you shouldn't save from insert mode. Use <Kbd>Esc</Kbd> then <Kbd>:w</Kbd>. They're right that it leaves you in insert mode after saving, which is weird. They're wrong that this matters. I save twenty times an hour and leaving insert mode to do it was burning through my wrist budget.
 
 The one thing I lost: LSP signature help used to be on `<C-s>` by default (Nvim 0.11+). I didn't use it enough to care. That's the trade-off I'm happy with.
 

@@ -11,7 +11,7 @@ published: false
 
 The blog has a "read this post aloud" button. The implementation is
 maybe twenty lines of `SpeechSynthesisUtterance`. The actually hard
-part — and the part that took the most iteration — is picking a
+part, and the part that took the most iteration, is picking a
 *default voice* that doesn't make the listener immediately turn it
 off.
 
@@ -31,8 +31,8 @@ English Female"), often with `(Natural)` or `(Neural)` in the name.
 Edge contributes a different set of "Microsoft Aria Online (Natural)"
 voices.
 
-If you naively pick `voices.find(v => v.lang.startsWith('en'))` —
-which is what most tutorials show — you'll end up reading your
+If you naively pick `voices.find(v => v.lang.startsWith('en'))`,
+which is what most tutorials show, you'll end up reading your
 thoughtful blog post in the voice of a robotic clown about half the
 time, depending on which OS+browser the visitor is using.
 
@@ -112,7 +112,7 @@ const sweet = english.filter(v => scoreVoice(v) >= SWEET_VOICE_THRESHOLD);
 const list = sweet.length > 0 ? sweet : english;
 ```
 
-The fallback to the full list is important — on a bare-bones Linux
+The fallback to the full list is important. On a bare-bones Linux
 Chromium, no voice will score above 15, and silently hiding *every*
 voice would break the dropdown entirely.
 
@@ -122,8 +122,8 @@ I tried "find the first voice whose name includes 'Natural'" first.
 It worked in Chrome on macOS and broke everywhere else. The scoring
 function works because it's *additive*: a "Microsoft Aria Online
 (Natural)" voice gets `+100` for natural and `+30` for online and
-`+20` for being non-local, totalling 150 — clearly better than a
-"Samantha" at 17 — without the code needing to know anything about
+`+20` for being non-local, totalling 150. Clearly better than a
+"Samantha" at 17, and the code never needs to know anything about
 Microsoft Aria specifically.
 
 Adding a new "good voice" is also a one-line change: just bump a

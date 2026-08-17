@@ -4,7 +4,7 @@ slug: pihole-opnsense-kea-unbound
 publishedAt: '2026-04-30'
 summary: >-
   How to wire Pi-hole as the primary DNS server across all interfaces on an
-  OPNsense router running Kea DHCP and Unbound — including the VLANs.
+  OPNsense router running Kea DHCP and Unbound, including the VLANs.
 tags:
   - Homelab
   - Networking
@@ -30,11 +30,11 @@ Client
 
 Pi-hole sits in front. It handles the filtering. Anything that isn't blocked gets forwarded to Unbound, which resolves it. Clients point at Pi-hole, not at OPNsense directly.
 
-This gives you per-client stats in Pi-hole's dashboard — it sees real device IPs, not just the router's IP.
+This gives you per-client stats in Pi-hole's dashboard. It sees real device IPs, not just the router's IP.
 
 ## Kea DHCP: the DNS field that isn't there
 
-OPNsense's newer Kea DHCP server replaced the old ISC DHCP. The subnet editor looks clean, but there's no obvious "DNS Servers" field. You get things like Domain name, Domain search, Time servers — but not the one you actually need.
+OPNsense's newer Kea DHCP server replaced the old ISC DHCP. The subnet editor looks clean, but there's no obvious "DNS Servers" field. You get things like Domain name, Domain search, Time servers. But not the one you actually need.
 
 The reason: Kea stores everything as DHCP options internally. DNS servers are option 6 (`domain-name-servers`). You add it through the DHCP option data text area using JSON.
 
@@ -53,13 +53,13 @@ Then in the DHCP option data field:
 ]
 ```
 
-Save. Repeat for every subnet — LAN, each VLAN, guest WiFi.
+Save. Repeat for every subnet: LAN, each VLAN, guest WiFi.
 
 Clients pick it up on the next DHCP renewal.
 
 ## Firewall rules for VLANs
 
-LAN is fine — it's on the same subnet as Pi-hole (`192.168.1.x`), so traffic flows directly.
+LAN is fine. It's on the same subnet as Pi-hole (`192.168.1.x`), so traffic flows directly.
 
 VLANs and guest networks are isolated by default. They can't reach `192.168.1.20` without an explicit allow rule, which means DHCP hands out Pi-hole's IP but DNS queries get silently dropped. The symptoms look identical to a DNS outage.
 
@@ -73,7 +73,7 @@ For each VLAN and the guest interface, go to Firewall → Rules → [interface] 
 | Destination | `192.168.1.20` |
 | Destination port | DNS (53) |
 
-Add this rule above any existing block-LAN rule. On guest networks especially, this should be a narrow exception — DNS to Pi-hole only, not general LAN access.
+Add this rule above any existing block-LAN rule. On guest networks especially, this should be a narrow exception: DNS to Pi-hole only, not general LAN access.
 
 ## Unbound: make sure it's not forwarding to Pi-hole
 
@@ -81,10 +81,10 @@ Pi-hole forwards to Unbound. Unbound must not forward back to Pi-hole. That loop
 
 Go to Services → Unbound DNS → General.
 
-- Enable Forwarding Mode: unchecked — Unbound resolves recursively, no upstream needed
+- Enable Forwarding Mode: unchecked. Unbound resolves recursively, no upstream needed
 - Confirm nothing under Query Forwarding points to `192.168.1.20`
 
-Unbound is also where local hostnames come from (devices registered via Kea DHCP leases). Pi-hole can resolve those too — covered in the next step.
+Unbound is also where local hostnames come from (devices registered via Kea DHCP leases). Pi-hole can resolve those too, covered in the next step.
 
 ## Pi-hole: set Unbound as upstream
 
@@ -96,7 +96,7 @@ Uncheck all the preset upstream servers. Under Custom DNS servers, add:
 192.168.1.1
 ```
 
-That's OPNsense's LAN IP — Unbound is listening there.
+That's OPNsense's LAN IP. Unbound is listening there.
 
 While you're in DNS settings, enable **Conditional Forwarding**:
 
@@ -105,7 +105,7 @@ While you're in DNS settings, enable **Conditional Forwarding**:
 
 This lets Pi-hole resolve local hostnames (like `nas.local` or device names) by asking Unbound, which knows about Kea's DHCP leases.
 
-Also confirm Pi-hole's own DHCP server is disabled. Settings → DHCP. Kea handles DHCP — Pi-hole shouldn't be running a competing one.
+Also confirm Pi-hole's own DHCP server is disabled. Settings → DHCP. Kea handles DHCP, so Pi-hole shouldn't be running a competing one.
 
 ## Verifying it works
 
@@ -138,7 +138,7 @@ dig doubleclick.net @192.168.1.20
 
 Should return `0.0.0.0` or `NXDOMAIN`. Pi-hole's blocked count should increment.
 
-For VLANs — from a device on a VLAN, run `dig google.com`. If it times out, the firewall rule is missing or below the block-LAN rule.
+For VLANs, from a device on a VLAN, run `dig google.com`. If it times out, the firewall rule is missing or below the block-LAN rule.
 
 The live query log confirms per-client IPs are showing up:
 

@@ -70,7 +70,7 @@ mv ~/Downloads/talosctl-darwin-arm64 ~/.bin/talosctl
 
 The CP lives as a VM on the Glovary alongside OPNsense. One host, two workloads.
 
-Upload the ISO the same way as OPNsense (`local` → ISO Images → Upload). Then create a VM with the settings below — same shape as the OPNsense one, different specs:
+Upload the ISO the same way as OPNsense (`local` → ISO Images → Upload). Then create a VM with the settings below. Same shape as the OPNsense one, different specs:
 
 | Tab | Setting |
 |-----|--------|
@@ -99,7 +99,7 @@ sudo dd if=metal-amd64.iso of=/dev/rdisk4 bs=1m status=progress
 
 *(If `dd` rejects `bs=1m`, [you're on GNU dd](/blog/dd-block-size-bsd-vs-gnu). Use `bs=1M`.)*
 
-Boot each mini PC from the USB. Talos detects the hardware, brings up the primary NIC, grabs its reserved IP via DHCP, and sits in maintenance mode — same as the CP VM.
+Boot each mini PC from the USB. Talos detects the hardware, brings up the primary NIC, grabs its reserved IP via DHCP, and sits in maintenance mode, same as the CP VM.
 
 The workers don't need any keyboard or mouse interaction after the BIOS boot menu. Once they're sitting at their reserved IPs, you can walk away from the hardware and drive everything from your laptop.
 
@@ -178,7 +178,7 @@ Then in OPNsense → Services → Kea DHCPv4 → Reservations, add a host reserv
 
 My original Talos config was pinned to `10.0.0.x`, so when I first brought OPNsense up with the default `192.168.1.1/24` LAN, nothing could talk. The fix was to move OPNsense LAN to `10.0.0.0/24` so the existing Talos config just worked. Cheaper than re-applying machineconfigs to three nodes.
 
-Kubernetes API reachability is LAN-only on `10.0.0.201:6443`. From outside (an Azure node you add later, say) you need either a port forward, WireGuard, or [KubeSpan](https://www.talos.dev/v1.11/kubernetes-guides/network/kubespan/). My plan is KubeSpan, but it needs a reachable peer discovery endpoint — see `fix-azure-etcd.sh` in my branch notes.
+Kubernetes API reachability is LAN-only on `10.0.0.201:6443`. From outside (an Azure node you add later, say) you need either a port forward, WireGuard, or [KubeSpan](https://www.talos.dev/v1.11/kubernetes-guides/network/kubespan/). My plan is KubeSpan, but it needs a reachable peer discovery endpoint. See `fix-azure-etcd.sh` in my branch notes.
 
 Don't `bootstrap` twice. Running `talosctl bootstrap` on a control plane that already has an etcd cluster will corrupt state. There's a reason it's a separate command. It's the one you run exactly once.
 
