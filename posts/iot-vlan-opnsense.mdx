@@ -1,0 +1,116 @@
+---
+title: 'IoT VLAN on OPNsense: isolate devices, keep control'
+slug: iot-vlan-opnsense
+publishedAt: '2026-05-01'
+summary: >-
+  How to set up a dedicated IoT VLAN on OPNsense with Kea DHCP, Pi-hole DNS,
+  and firewall rules that let LAN control IoT but never the other way around.
+tags:
+  - Homelab
+  - Networking
+  - OPNsense
+  - IoT
+published: false
+---
+
+Smart plugs, bulbs, sensors, thermostats. They all need internet access, and none of them should be able to touch the rest of your network. The standard answer is a dedicated IoT VLAN. Here's how to do it on OPNsense with Kea DHCP and Pi-hole already in the mix.
+
+## Why bother
+
+IoT devices are notoriously bad at security. Firmware rarely updates, credentials are often default, and the manufacturers don't exactly have a strong track record. Putting them on the same network as your NAS and laptops is a risk that's easy to eliminate.
+
+The goal: IoT devices get internet access and Pi-hole DNS. They can't initiate connections to LAN. LAN can reach them freely, which is useful when Home Assistant is controlling everything.
+
+## The plan
+
+```
+LAN   192.168.1.0/24   trusted devices, Home Assistant
+IoT   192.168.20.0/24  VLAN 20 — smart devices, sensors
+```
+
+Pi-hole sits on LAN at `192.168.1.20`. It serves both subnets. It listens on `0.0.0.0:53`, so any device that can route to it will get answered.
+
+## Create the VLAN
+
+OPNsense → Interfaces → Other Types → VLANs → Add:
+
+- Parent interface: your LAN physical NIC (e.g. `igb0`)
+- VLAN tag: `20`
+- Description: `IoT`
+
+Save.
+
+## Assign and enable the interface
+
+Interfaces → Assignments → find the new VLAN 20 entry → Add.
+
+Click into the new interface:
+
+- Enable: checked
+- Description: `IoT`
+- IPv4 configuration: Static
+- IPv4 address: `192.168.20.1 / 24`
+
+Save & Apply.
+
+## Kea DHCP for the IoT subnet
+
+Services → Kea DHCP → Subnets → Add:
+
+- Subnet: `192.168.20.0/24`
+- Pool: `192.168.20.100 - 192.168.20.200`
+- Gateway: `192.168.20.1`
+
+For DNS, uncheck **Auto collect option data**, then add option 6 in the DHCP option data field:
+
+```json
+[
+  {
+    "name": "domain-name-servers",
+    "data": "192.168.1.20"
+  }
+]
+```
+
+Same JSON format as the LAN subnet. Same Pi-hole IP. IoT devices pick it up on DHCP renewal.
+
+## Firewall rules
+
+Three rules on the IoT interface, in this order:
+
+**Firewall → Rules → IoT**
+
+| # | Action | Protocol | Source | Destination | Port | Description |
+|---|--------|----------|--------|-------------|------|-------------|
+| 1 | Pass | TCP/UDP | IoT net | `192.168.1.20` | 53 | DNS to Pi-hole |
+| 2 | Block | any | IoT net | `192.168.1.0/24` | any | Block IoT from LAN |
+| 3 | Pass | any | IoT net | any | any | IoT internet access |
+
+Order matters. Rule 1 punches a narrow hole to Pi-hole before rule 2 blocks the rest of LAN. Rule 3 lets everything else through to the internet.
+
+Nothing on the LAN interface needs changing. The default allow LAN rule already covers LAN → IoT access. OPNsense tracks connection state, so return traffic from IoT back to LAN is automatically allowed when LAN initiated the connection. IoT devices can never start a new connection to LAN. That asymmetry is exactly what you want.
+
+## Pi-hole across subnets
+
+Pi-hole listens on `0.0.0.0:53`. It doesn't care which subnet the query comes from. An IoT device at `192.168.20.50` sends a query to `192.168.1.20`. OPNsense routes it, firewall rule 1 passes it, Pi-hole answers it.
+
+No extra Pi-hole config needed. The filtering, the block lists, the query log. All of it works for IoT devices the same as for LAN devices. You'll see their IPs in the Pi-hole dashboard separately.
+
+## Home Assistant on the IoT VLAN
+
+Home Assistant runs on the IoT VLAN alongside the devices it controls. Same subnet means discovery works without mDNS bridging. HA can see everything on `192.168.20.x` directly.
+
+From a LAN device, reach the HA dashboard at `http://192.168.20.x:8123`. The default LAN allow rule covers it. No extra rule needed.
+
+If you want to tighten LAN access later, replace the default allow rule with specific ones: LAN to IoT port 8123 only, nothing else. One thing to know before you do: OPNsense's firewall rule UI rejects `8123` as a raw port number in the destination port range field. It expects a port alias. Create one first:
+
+**Firewall → Aliases → Add**
+- Name: `HomeAssistant`
+- Type: Port
+- Content: `8123`
+
+Then use `HomeAssistant` in both the From and To port range fields. The raw number works fine in some places. The port range validator is just picky about custom ports.
+
+---
+
+*The asymmetry is the point. LAN can talk to IoT whenever it wants. IoT can never talk back unless LAN started the conversation.*

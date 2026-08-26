@@ -1,0 +1,32 @@
+---
+title: Opnsense - Firewall
+slug: opnsense-firewall
+publishedAt: '2026-03-04'
+summary: How firewall rules, aliases, and VLAN isolation come together in OPNsense.
+tags:
+  - Infrastructure
+published: false
+series:
+  title: Home Lab
+  order: 7
+---
+
+Routing moves packets. The firewall decides *which* packets are allowed to move.
+
+## Default deny
+
+The first rule is the only one that matters: nothing in or out unless something later in the list says yes. Every allow is deliberate. Every silence is a block.
+
+## Aliases instead of IPs
+
+I never type IP addresses into rules. Aliases stay readable a year later when I've forgotten what `192.168.30.42` is supposed to be. `IoT_Devices` is the list of smart plugs and cameras. `Trusted_PCs` is my workstations. `Blocked_Countries` is a GeoIP feed I don't want to think about.
+
+## VLAN isolation
+
+The rules I care most about keep the IoT VLAN from talking to LAN. Smart plugs phone home for firmware. Fine, let them out. They don't need to know my laptop exists, so that direction is blocked. LAN to IoT stays open so I can flip a switch from my phone.
+
+That asymmetry is the whole point of VLAN isolation. Cheap hardware on the IoT side gets internet but not lateral access. If a camera with a hardcoded password gets popped, the blast radius is its own segment.
+
+---
+
+*The rule that earns its keep is the one you wrote when you were paying attention.*

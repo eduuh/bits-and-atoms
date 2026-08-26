@@ -1,0 +1,38 @@
+---
+title: 'How I Sleep at Night: My Paranoid Backup Strategy'
+slug: paranoid-backup-strategy
+publishedAt: '2026-05-03'
+summary: >-
+  My rule for the homelab is simple: services can fall over, data can't
+  disappear. This is how 3-2-1 looks in my closet.
+tags:
+  - Infrastructure
+published: false
+series:
+  title: Home Lab
+  order: 11
+---
+
+Photos, documents, code, media. Terabytes that can't come back if they go. The whole homelab is allowed to fail. The data isn't.
+
+## The 3-2-1 rule
+
+Three copies, on two different media types, with one of them offsite. That's the rule in one line. Everything below is just an instance of it.
+
+## My implementation
+
+The live data sits on my PC's NVMe drive and on the Proxmox VMs. That's copy one.
+
+Copy two is a [TrueNAS Scale](https://www.truenas.com/truenas-scale/) box running ZFS. Snapshots fire every 15 minutes, so a file I deleted at lunch is still there at dinner. The pool is RAID-Z2, which means two drives can die before I lose anything.
+
+Copy three lives away from the house. Critical data (anything I'd cry about) is encrypted with [Restic](https://restic.net/) and pushed to [Backblaze B2](https://www.backblaze.com/cloud-storage) nightly. Media goes to a NAS at a friend's place; we swapped backup space and pretend that counts as offsite redundancy. It does.
+
+## Testing restores
+
+A backup is only as good as the restore. Monthly fire drill: pick a random file, pick a random VM, recover it. If the recovery is awkward, fix the awkward part before I need it for real.
+
+I learned this one the hard way. The first time I needed a file out of B2 I'd never tested the restore path, and the password manager I needed to unlock the encryption key was on the laptop I was trying to restore.
+
+---
+
+*The backup you haven't restored is a story you're telling yourself.*

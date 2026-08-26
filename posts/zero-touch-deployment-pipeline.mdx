@@ -1,0 +1,29 @@
+---
+title: 'From Commit to Live: My Zero-Touch Deployment Pipeline'
+slug: zero-touch-deployment-pipeline
+publishedAt: '2026-05-05'
+summary: >-
+  How I automated the deployment of this Next.js blog using GitHub Actions and
+  Docker.
+tags:
+  - Infrastructure
+  - my-blog
+published: false
+---
+
+I hate manual deployments. They are slow, error-prone, and boring. Here is how I automated everything.
+
+## The Workflow
+
+1.  **Write:** I write a post in MDX and commit it to the `main` branch.
+2.  **Test:** GitHub Actions spins up, runs linting, type checking, and unit tests.
+3.  **Build:** If tests pass, it builds a Docker image of the Next.js app.
+4.  **Deploy:** The image is pushed to my container registry, and my production server pulls the new image and restarts the container.
+
+## Key Tools
+
+- **GitHub Actions:** The CI/CD runner.
+- **Docker:** Ensuring the environment is consistent from dev to prod.
+- **Watchtower (or similar):** Automatically updating running containers when a new image is available.
+
+Now, publishing a post is as simple as `git push`.
