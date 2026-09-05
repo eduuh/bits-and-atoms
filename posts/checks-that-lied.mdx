@@ -1,0 +1,401 @@
+---
+title: The Checks That Lied
+slug: checks-that-lied
+publishedAt: '2026-08-14'
+summary: >-
+  I segmented my network, wrote tests to prove it, and watched the tests pass
+  while measuring nothing at all. Then the same disease turned up in my home
+  automation, and left a freezer switched off for thirteen hours in a house
+  full of green ticks.
+tags:
+  - Infrastructure
+  - Security
+published: true
+series:
+  title: Home Lab
+  order: 13
+---
+
+I spent an evening carving my house into segments. IoT on its own VLAN, unable
+to reach anything. A firewall rule set to enforce it. Then I wrote a script to
+prove the segmentation held, ran it, and got a wall of green ticks.
+
+The ticks were meaningless. It took three separate bugs before I had a test I'd
+actually trust. Each one was
+a check that looked like it was measuring something and wasn't.
+
+This post is about those three bugs, because the segmentation itself is the
+boring part. Anyone can write a block rule. The hard part is knowing whether it
+works.
+
+## The setup, briefly
+
+One OPNsense firewall, three segments:
+
+```
+TRUSTED  10.10.0.0/24   laptops, phones, hypervisor, DNS
+IOT      10.30.0.0/24   everything I do not trust
+VPN      10.10.0.208/28 a slice of TRUSTED that exits through WireGuard
+```
+
+The goal for IOT was strict: internet yes, everything else no. Not "mostly
+isolated". No management interfaces, no DNS servers other than its own gateway,
+no lateral movement to another IoT device.
+
+## Bug one: the test that never touched the firewall
+
+My first isolation script ran from the Proxmox host. It pinged the Pi-hole from
+the IoT range, got no answer, and reported the segment sealed.
+
+Except Proxmox is dual-homed. It has a leg in both networks. When it sent that
+packet it used its *own* TRUSTED interface, because that was the shortest path
+to the destination. The packet never went near the firewall. No rule had
+anything to block, and
+"blocked" was indistinguishable from "the test was nonsense".
+
+The fix was to stop faking it. Build a VLAN sub-interface, put it in its own
+network namespace, and make it get a real DHCP lease on the segment under test:
+
+```bash
+ip link add link vmbr0 name vmbr0.30 type vlan id 30
+ip netns add isolationtest
+ip link set vmbr0.30 netns isolationtest
+ip netns exec isolationtest dhclient -1 vmbr0.30
+```
+
+Now the namespace has `10.30.0.102` and a default route of `10.30.0.1`, with no
+other interface to leak out of. Every packet has to traverse the firewall,
+because there is no other way out.
+
+<Callout type="gotcha" title="A dual-homed test host will lie to you every time">
+
+If the machine running your test can reach the target by a path that avoids the
+thing you are testing, it will. Routing picks the cheapest route, not the
+interesting one. Either isolate the test into a namespace, or run it from a
+device that genuinely only has one way out.
+
+</Callout>
+
+## Bug two: dig writes failures to stdout
+
+With the namespace in place I re-ran the checks. All green, including the ones
+asserting that the segment *works*: DNS resolves via its own gateway, the
+internet is reachable.
+
+That half was a lie too, and it lied in the more dangerous direction.
+
+The check was doing this:
+
+```bash
+if dig +short @10.30.0.1 example.com | grep -q .; then
+  echo "ok"        # got an answer
+else
+  echo "FAILED"
+fi
+```
+
+When `dig` cannot reach a server it prints `;; communications error` and
+`no servers could be reached`. Both go to **stdout**, not stderr. `grep -q .`
+matches
+that text exactly as happily as it matches an IP address. So a resolver that was
+completely unreachable produced a confident `ok`.
+
+I had built a check that could not fail. Every timeout, every dead resolver,
+every misconfigured forwarder would have reported as healthy.
+
+The rule that falls out: **do not infer success from the shape of the output
+when the tool already gives you an exit code.**
+
+```bash
+if dig +short +time=2 +tries=1 @10.30.0.1 example.com >/dev/null 2>&1; then
+  vchk "DNS via gateway 10.30.0.1" ok
+else
+  vchk "DNS via gateway 10.30.0.1" FAILED
+fi
+```
+
+`dig` exits non-zero when it cannot reach the server. It was telling me the
+truth the entire time; I just wasn't listening to the channel that carried it.
+
+Two other variants of this same mistake showed up later in the same codebase:
+
+- `grep <pattern> | wc -l` returns `1` for an empty pipeline in some shells, so a
+  "count of cleartext DNS packets" check reported a leak every single morning.
+  `grep -c "IP "` fixed it.
+- `if some_command | head -3; then` always takes the true branch, because
+  `head` exits 0 regardless of what came before it. That one produced a
+  fortnight of phantom alerts.
+
+## Bug three: `(self)` does not mean what you think
+
+With honest tests, a real leak finally surfaced. An IoT device could query DNS
+on `10.10.0.1`, the firewall's TRUSTED address.
+
+The rule looked airtight. It allowed DNS to `(self)` and blocked everything
+else. But in pf, `(self)` expands to **every address on the firewall**, on every
+interface. A device on the IoT segment was permitted to talk to the firewall's
+TRUSTED-side address, which is exactly the boundary I was trying to draw.
+
+The fix is to name the interface address explicitly. Use `opt1ip` rather than
+`(self)`. One word, and a hole closes.
+
+## The layer 2 hole underneath all of it
+
+None of the above touches the switch, and the switch had its own problem.
+
+RouterOS ships bridge ports with `ingress-filtering=no` and
+`frame-types=admit-all`. A PVID only decides what happens to *untagged* frames.
+A device that tags its own traffic with VLAN 10 gets it forwarded to VLAN 10.
+Straight past every firewall rule, because the firewall never sees a packet that
+was switched at layer 2.
+
+So an IoT gadget on a "VLAN 30 access port" could have reached my management
+network by doing nothing more exotic than setting a VLAN tag.
+
+Fixing it means every access port gets all three:
+
+```
+/interface bridge port
+set [find interface=ether1] pvid=30 ingress-filtering=yes \
+    frame-types=admit-only-untagged-and-priority-tagged horizon=1
+```
+
+`horizon=1` is the other half. Ports sharing a horizon value will not forward to
+each other, which gives device-to-device isolation *inside* the IoT VLAN. The
+camera cannot see the smart plug. Wireless clients need
+`default-forwarding=no` on the interface for the same reason.
+
+<Callout type="warning" title="One PVID is invisible until filtering is on">
+
+The bridge interface itself needs a PVID, and on RouterOS 6 it does not appear
+in `print`, `export`, or `get` until `vlan-filtering=yes` is set. Enable
+filtering without it and management drops instantly.
+
+I locked myself out doing exactly this. What saved me was arming a revert first:
+
+```
+/system scheduler add name=revert interval=3m on-event={
+  /interface bridge set bridge1 vlan-filtering=no
+}
+```
+
+Make the change, confirm you still have access, delete the scheduler. If you are
+wrong, the switch undoes it for you in three minutes.
+
+</Callout>
+
+## What honest output looks like
+
+Forty checks, run from inside the segment, asserting on exit codes:
+
+```
+== layer 3 ==
+namespace holds one interface, leased 10.30.0.102, default via 10.30.0.1
+
+-- the segment must work --
+  DNS via gateway 10.30.0.1          ok       ✓
+  https github.com                   ok       ✓
+
+-- the segment must reach nothing else --
+  ping TRUSTED gw 10.10.0.1          blocked  ✓
+  Proxmox GUI 10.10.0.2:8006         blocked  ✓
+  MikroTik winbox :8291              blocked  ✓
+  OPNsense GUI 10.10.0.1:443         blocked  ✓
+
+-- DNS may only come from the gateway --
+  DNS to Pi-hole 10.10.0.105         blocked  ✓
+  DoH cloudflare-dns.com:443         blocked  ✓
+  DoT AdGuard 94.140.14.14           blocked  ✓
+
+== layer 2 — MikroTik port policy ==
+  bridge vlan-filtering enabled              ✓
+  wlan1 client isolation (default-forwarding) ✓
+  access ether1 pvid=30 horizon ingress frames ✓
+  trunk  ether5 pvid=10 ingress-filtering     ✓
+```
+
+The DNS block list matters more than it looks. Blocking port 53 is easy and
+almost useless on its own. A device that wants to dodge your filtering will use
+DNS-over-HTTPS on 443, which is indistinguishable from web traffic unless you
+name the resolvers. So the check list includes the DoH and DoT endpoints of
+every major provider, and the rule set blocks them by address.
+
+## Then it happened again, one layer up
+
+I thought this was a networking lesson. It is not. A few weeks later I spent a
+day inside Home Assistant and hit the same disease five more times, in a system
+with no VLANs in sight.
+
+### The entities that were healthy and dead
+
+Half my dashboard went grey. Protection tiles, network tiles. `Unavailable`,
+all of them, frozen at the same timestamp.
+
+Everything I checked said the system was fine. The publisher was running, on
+schedule, exiting zero. The broker was holding current data on the exact topics
+those entities named. The MQTT integration reported `loaded`. Not one error
+anywhere.
+
+The cause was that MQTT discovery documents are **retained messages**, and my
+broker does not persist retained messages across a restart. My scripts published
+their discovery exactly once, at deploy time. When the broker restarted, every
+definition vanished. Home Assistant kept the entities in its registry with
+nothing left to rebuild them from, so they sat unavailable forever while the
+publishers cheerfully wrote to topics nobody was subscribed to any more.
+
+Solar Assistant's entities survived the same restart, for one reason: it
+re-announces continuously. Mine announced once and assumed the broker would
+remember.
+
+<Callout type="gotcha" title="Retained state is only durable if something keeps saying it">
+
+Anything that publishes retained configuration should republish it on every
+run, not once at setup. It costs nothing, and it turns a permanent silent
+failure into a five-minute self-heal. "I told it once" is not a guarantee; it is
+a hope about somebody else's persistence settings.
+
+</Callout>
+
+### The outage that never happened
+
+Same day. My dashboard reported the internet down. A speed test pulled
+220 Mbit/s while it did.
+
+The script reads gateway latency and loss out of dpinger over SSH. SSH had
+broken. And the code did this:
+
+```bash
+"${WAN_LOSS:-100}"
+```
+
+A missing reading defaulted to **100% packet loss**. This has three states:
+healthy, genuinely down, and *couldn't measure*. The
+default collapsed the third into the second. The system spent a full day making a
+confident assertion from an absence of data.
+
+The fix was to let "unknown" exist:
+
+```bash
+up_from_loss() {
+  [ -n "${1:-}" ] || { echo null; return; }
+  if [ "${1%.*}" -lt 100 ] 2>/dev/null; then echo true; else echo false; fi
+}
+```
+
+and to mark the dependent entities unavailable when the reading is null, rather
+than letting a binary sensor fall to `off`. Not knowing is a state worth being
+able to display. If your data model has no way to express it, your code will
+invent an answer.
+
+### The name that pointed at the wrong thing
+
+My load automations were numbered `load_01` through `load_06`. I inserted a new
+one in the middle of the file, which shifted every later number onto a different
+automation. Home Assistant's registry kept each old number bound to the entity
+ID it was first given.
+
+The result:
+
+```
+automation.load_reconcile_scheduled_loads    ->  "TV and home system overnight off"
+automation.load_reconcile_scheduled_loads_2  ->  "reconcile scheduled loads"
+```
+
+Something else called `automation.trigger` on the first of those, expecting the
+reconciler. It got the TV automation. Triggered with no matching trigger id,
+that one
+matches nothing in its `choose` and does precisely nothing.
+
+So my entire load-restore path was dead. Every automation displayed `on`. No
+error was logged. I found out when mains came back after a three-day outage,
+the outage flag cleared, the shed counter reset. And the freezer, TV and
+dispenser all stayed off, because the thing responsible for switching them back
+on had never once been called.
+
+The freezer had been off since three that morning.
+
+<Callout type="warning" title="Identifiers must be tied to identity, not position">
+
+`load_01` is a position. Positions move. Give things names that mean what they
+are, like `load_freezer_schedule`. Then reordering a file cannot silently
+re-point a reference. This is the second time the same class of bug bit me:
+earlier, a
+template referenced `sensor.battery_usable_kwh`, which was the *unique_id*, not
+the entity_id. `| float(0)` turned the miss into a zero, so "runtime remaining"
+would have read 0 h forever without logging anything.
+
+</Callout>
+
+### The log file that did not exist
+
+While debugging all this I grepped the Home Assistant log for MQTT errors.
+Nothing. I grepped for Tuya errors. Nothing. I reported both as evidence that
+nothing was wrong.
+
+There was no log file. This install logs to stdout; `/config/home-assistant.log`
+was never created. `grep` on a missing file returns nothing and exits non-zero,
+and I was reading the empty output as a clean bill of health.
+
+Every one of those greps was a check that could not fail. The real log, once I
+found it, had the answers sitting in it the whole time.
+
+### Verifying the wrong thing entirely
+
+The last one is the best, because I did everything right and was still wrong.
+
+I moved my dashboard layout into Home Assistant's default dashboard and
+verified it thoroughly: the API returned the config, the storage file contained
+it, the config check passed, the URL served HTTP 200. Every check green.
+
+The phone kept showing a completely different page.
+
+This Home Assistant version ships a **new built-in panel** at `/home`. It shows
+area
+summaries, and it is not a Lovelace dashboard at all. It cannot hold cards, and it
+occupies the landing position. My layout was saved perfectly into a dashboard
+that was no longer where anyone looks.
+
+I had verified the artefact instead of the experience. Six green checks, all
+measuring something real, none of them measuring the thing that mattered: what
+appears when you open the app.
+
+## The thing I keep relearning
+
+Every one of these bugs produced a *green* result. Not an error, not a crash.
+A confident tick next to a claim that was false. A check that cannot fail is
+worse than no check, because it converts "I don't know" into "I verified it".
+
+Five habits came out of this:
+
+1. **Run the test from where the traffic actually originates.** A namespace on a
+   VLAN sub-interface costs ten lines and removes an entire class of lie.
+2. **Assert on exit codes, not output shape.** Tools print diagnostics to
+   whatever stream they feel like. And `grep` on a file that does not exist
+   returns the same silence as a file with no matches.
+3. **Prove the negative case.** Before trusting that a block works, confirm the
+   same test *reports a leak* when you deliberately open the hole. If you have
+   never seen your check fail, you have not tested your check.
+4. **Let "I don't know" be a value.** Most of these bugs are one missing state:
+   a default that turns an absent measurement into a confident number, a
+   `| float(0)` that turns a broken reference into zero, a binary sensor with
+   nowhere to put uncertainty. If your data model cannot express *unknown*, your
+   code will quietly invent an answer, and it will pick the wrong one.
+5. **Verify the experience, not the artefact.** The config was saved. The file
+   was correct. The endpoint returned 200. The page was still wrong. Green
+   checks on the layer you happen to be looking at say nothing about the layer
+   the user actually touches.
+
+The same applies to the VPN segment's kill switch, which I now verify by
+dropping the tunnel and confirming traffic stops rather than falling back to the
+ISP. An untested kill switch is not a kill switch. It is an assumption with
+good branding.
+
+What connects all of it is not carelessness. Every one of these checks was
+written deliberately, by someone trying to be rigorous, and every one returned
+green. The failure was never in the executing. It was in what the check was
+pointed at. A test measures whatever it measures, and it will keep reporting
+success about that thing long after it has stopped being the thing you care
+about.
+
+Which is why the freezer sat off for thirteen hours in a house full of green
+ticks.

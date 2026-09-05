@@ -1,0 +1,198 @@
+---
+title: My Home Lab, V2
+slug: my-home-lab-v2
+publishedAt: '2026-08-17'
+summary: >-
+  The Kubernetes cluster is gone. One mini PC runs the whole house now: four
+  network segments, a solar inverter Home Assistant can act on, and a guard that
+  shuts the servers down before the battery does.
+tags:
+  - Infrastructure
+  - Smart Home
+published: true
+pinned: true
+series:
+  title: Home Lab
+  order: 15
+---
+
+The first version of this post ended with a list of things I wanted to do next.
+One line said "Home Assistant for smart home integration". This is that line,
+finished.
+
+Everything else on the page is gone. Three mini PCs became one. Talos, Flux,
+Longhorn, MetalLB and Cilium all came down, not because any of them failed, but
+because the AMD box became my desktop and the ACEMAGIC died, and a single node
+Kubernetes cluster is a lot of moving parts to keep running for one machine.
+
+What replaced it is smaller and I use it more.
+
+## What actually runs
+
+One Glovary mini PC with 8 GB of RAM, running Proxmox.
+
+| Guest | Address | What it does |
+|---|---|---|
+| OPNsense VM 100 | `10.10.0.1` | routing, four segments, DHCP, DNS |
+| Home Assistant VM 102 | `10.10.0.52` | 17 automations, the dashboard |
+| Pi-hole LXC 101 | `10.10.0.106` | DNS filtering |
+| Solar Assistant, Pi 5 | `10.10.0.105` | reads the inverter, publishes MQTT |
+| MikroTik RB2011 | `10.10.0.3` | switching, VLANs, WiFi |
+
+The firewall gets 2560 MB and the WAN NIC by PCI passthrough. Memory is
+deliberate. OPNsense on ZFS grows its ARC to fill whatever it's given, and the
+host only has 8 GB.
+
+## Four segments, and how I know they hold
+
+```
+              internet
+                 │
+          OPNsense 10.10.0.1
+                 │
+  ┌──────────┬───┴──────┬──────────────┐
+TRUSTED     IOT      OFFICE          VPN
+10.10.0/24  10.30.0/24  10.20.0/24   WireGuard
+```
+
+IOT gets internet and nothing else. No management interfaces, no DNS except its
+own gateway, no reaching another IoT device.
+
+Writing the rules is the easy half. Knowing they work is the hard half, and my
+first attempt at proving it measured nothing at all, because the test ran from
+Proxmox, which has a leg in both networks, so the packets never went near the
+firewall at all. Everything passed. Everything was meaningless.
+
+The fix is to run the test from inside the segment:
+
+```bash
+ip link add link vmbr0 name vmbr0.30 type vlan id 30
+ip netns add iottest
+ip link set vmbr0.30 netns iottest
+ip netns exec iottest dhclient -1 vmbr0.30
+```
+
+Now it has a real lease on `10.30.0.0/24` and one way out. Every packet has to
+cross the firewall because there's no other route.
+
+I added a fourth segment last night for an office WiFi point. Fifteen checks,
+run from a namespace with a real lease:
+
+```
+DNS via gateway 10.20.0.1          ok        PASS
+https github.com                   ok        PASS
+ping TRUSTED gw 10.10.0.1          blocked   PASS
+Proxmox GUI 10.10.0.2:8006         blocked   PASS
+IOT device 10.30.0.102             blocked   PASS
+DNS to 1.1.1.1                     blocked   PASS
+```
+
+Then I turned one rule off to make sure the test could still fail. With the
+`10.0.0.0/8` block disabled the Proxmox GUI came back as REACHABLE, and blocked
+again when I put it back. **A check that has never failed hasn't been tested.**
+
+## The solar system is the interesting part
+
+A Growatt SPF, 3 kW output, on a 5.1 kWh LiFePO4 bank. A Pi 5 runs Solar
+Assistant, reads the inverter over USB, and publishes to MQTT. Home Assistant
+builds 59 entities from that with no YAML.
+
+The grid here is the unreliable part. We had a three day outage last week and
+the battery got down to 26%.
+
+So the house sheds load on the way down, in the order I'd actually give things
+up:
+
+| Battery | What goes off |
+|---|---|
+| 45% | dispenser |
+| 35% | TV, at the socket so standby goes too |
+| 30% | living room system |
+| 25% | deep freezer |
+| 20% | the servers, gracefully |
+| 15% | the inverter cuts everything |
+
+The freezer sits at the bottom on purpose. It's the biggest continuous load and
+the most tempting thing to cut first. It's also the one whose cost is measured in
+spoiled food.
+
+The shutdown guard runs on the hypervisor, not in Home Assistant. Home Assistant
+is a VM on the machine being shut down. A guard that dies with the thing it
+guards isn't a guard.
+
+## Letting the grid carry the heavy stuff
+
+The washing machine pulls 1.9 kW. Running that off a 5.1 kWh battery while mains
+sits there available is silly, so above 1 kW the inverter is told to let the grid
+take it.
+
+Solar Assistant can't do this. Its rule table triggers on time, battery state of
+charge, battery voltage, grid voltage and PV forecast. Load isn't on the list. So
+it lives in Home Assistant, which has both the trigger and the control.
+
+Picking the mode took three tries, and this is the part worth reading.
+
+`Solar/Utility/Battery` is the option that names exactly what I wanted. The
+inverter accepts the command, logs `Set 'Output source priority' to
+'Solar/Utility/Battery': Saved.` and then ignores it. The value never changes.
+Not in MQTT, not on Solar Assistant's own settings page.
+
+`Solar first` applies cleanly and doesn't do the job. I held it for two minutes
+with mains present at 237 V and the load peaking at 1384 W. The grid contributed
+0 W. The battery carried all of it.
+
+`Utility first` is the one that works:
+
+| Mode | load | battery | grid |
+|---|---|---|---|
+| Solar/Battery/Utility | 385 W | -355 W discharging | 0 W |
+| Utility first | 399 W | +93 W charging | 409 W |
+
+The battery flips from discharging 355 W to charging 93 W. Solar isn't wasted,
+because charger source priority is `Solar only`, so the panels charge the bank
+instead of feeding the load.
+
+**Naming is not behaviour.** I picked `Solar first` from the name and shipped it
+before I checked the power flow.
+
+## The reconciler that saved it
+
+`numeric_state` triggers in Home Assistant fire on a crossing. Reload while the
+load is already 2 kW and nothing fires, because there's no crossing left to
+detect. The automation is born inert.
+
+This bit me before. An earlier grid alert was written during an outage, so the
+condition was already true, and it never fired once in its life.
+
+So there's a third automation that re-asserts the right mode every ten minutes
+and at startup, then reads it back:
+
+```
+14:59:34  load crosses  -> automation fired
++25s      Utility first, batt +53 charging, grid 246 W
+15:10:00  reconciler fires on its boundary
++40s      Solar/Battery/Utility, batt -214 discharging, grid 0
+```
+
+During that test the restore automation couldn't do anything, because the load
+never crossed 600 W downward. The reconciler is what put the house back.
+
+## What this doesn't do
+
+One box is one box. If the Glovary dies, the firewall, Home Assistant and DNS all
+die with it, and the old cluster could lose a node and keep going where this one
+simply stops. I traded that away knowingly, for something I actually use every
+day.
+
+The Pi running Solar Assistant is the one machine my backup script can't reach.
+Everything about the inverter link lives in exactly one place, unbacked. I found
+out why this week: the SSH user is `solar-assistant`, not `pi`. Still not fixed.
+
+The inverter accepts writes it silently discards, and I only know about one of
+them. Every automation that sets a mode now reads it back thirty seconds later
+rather than trusting the write.
+
+And giving Home Assistant permission to change inverter settings opens all nine
+controls, including charge voltages and battery type. I wanted one of them.
+
+The cluster taught me more. This one gets used more.

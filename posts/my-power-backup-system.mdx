@@ -1,36 +1,190 @@
 ---
-title: My Power BackUp System
+title: My Power Backup System
 slug: my-power-backup-system
 publishedAt: '2026-02-01'
 summary: >-
-  A deep dive into my home power backup solution, ensuring uninterrupted
-  electricity during outages.
+  A 5kW hybrid inverter and a 5.12 kWh battery, bought to ride out power cuts.
+  Three years later the panels went up and it quietly became the primary supply,
+  with the grid as the fallback.
 tags:
   - Infrastructure
   - Smart Home
-published: false
+published: true
 series:
   title: Home Infrastructure
   order: 1
 ---
 
-Living in an area with occasional power instability led me to design and implement a robust power backup system.
+<Callout type="info" title="Update, August 2026: the solar arrived, and it does most of the work now">
 
-## The Challenge
+This post was written when the inverter was running on grid charge with panels
+still hypothetical. They are installed, and the numbers below are no longer the
+interesting part of the system. Skip to
+[What actually happened](#what-actually-happened) for real production figures and
+what monitoring turned up.
 
-Frequent power cuts were disrupting my work and daily life. I needed a solution that could switch over instantly and sustain critical loads for extended periods.
+</Callout>
 
-## The Solution
+I live somewhere the power goes out a lot. Nothing dramatic, just often enough
+that it stopped being a story and became a scheduling problem.
 
-I opted for a hybrid inverter system coupled with LiFePO4 batteries. This setup offers:
-- **Instant Switchover:** Computers don't even blink.
-- **Long Cycle Life:** LiFePO4 batteries last for thousands of cycles.
-- **Solar Integration:** The inverter is ready for future solar panel addition.
+## What I needed
 
-## Components
+Two things. Switch over fast enough that nothing reboots, and carry the
+important loads long enough that I am not sitting in the dark waiting for mains.
 
-- **Inverter:** 5kW Hybrid Inverter
-- **Battery:** 5.12kWh LiFePO4 Battery Bank
-- **Protection:** Surge protection devices and proper fusing.
+## What I bought
 
-This system has been a game-changer, providing peace of mind and continuous uptime.
+| Part | What I fitted |
+|---|---|
+| Inverter | 5kW hybrid |
+| Battery | 5.12 kWh LiFePO4 |
+| Protection | Surge protection devices and fusing |
+
+Hybrid, because I wanted the option of panels later without replacing the
+inverter. LiFePO4 because the bank takes thousands of cycles. The switchover is
+fast enough that computers don't even blink.
+
+That was the system for three years, and it did the job it was bought for.
+
+## What actually happened
+
+The panels went up, and the system stopped being a backup that occasionally
+runs and became the thing that runs the house.
+
+Two weeks of measured production, first half of August:
+
+| Day | Load | Solar | From grid |
+|---|---|---|---|
+| Aug 14 | 5.4 kWh | 6.4 kWh | **0** |
+| Aug 13 | 5.1 | 4.8 | **0** |
+| Aug 12 | 5.6 | 5.4 | **0** |
+| Aug 11 | 8.0 | 6.8 | **0** |
+| Aug 10 | 5.4 | 6.4 | **0** |
+| Aug 09 | 6.3 | 5.0 | 1.0 |
+| Aug 07 | 6.7 | 6.0 | 1.2 |
+| Aug 04 | 5.1 | 2.2 | 3.6 |
+| Aug 03 | 6.9 | 2.4 | 5.4 |
+| Aug 02 | 8.1 | 3.4 | 6.2 |
+
+Across those fourteen days: **85 kWh consumed, 70 kWh of it from the roof**.
+Solar covered a bit over three quarters of the house.
+
+The pattern is sharper than the average suggests. On days the array clears about
+5 kWh, the grid contributes **exactly nothing**. Not a little, zero. On the
+overcast run at the start of the month, production halved and the grid picked up
+the difference. There is no middle: either the sun covers the day or it does not.
+
+The charger is set to **Solar only**, so the inverter never charges the bank from
+mains. Utility exists purely to carry load when the battery is spent. That is why
+the grid column is zero so often. The house simply never needs it.
+
+## The thing I did not expect
+
+Adding monitoring changed what I know, not just what I can see.
+
+The inverter talks to a Raspberry Pi over USB; that publishes to MQTT; Home
+Assistant consumes it. Fifty-nine entities, none of which I have to read
+manually. I wrote about the plumbing separately in
+[Wiring Home Assistant Into My Solar Inverter](/blog/home-assistant-solar-inverter).
+
+What it surfaced immediately: **I had been through a grid outage without
+noticing.** Not a flicker. An outage that ran long enough for the house to live
+entirely on solar and battery, while I sat working through it. The inverter had
+switched over silently, exactly as designed, and no part of the system had any
+way to tell me. The first thing that noticed was a dashboard I built for a
+different reason.
+
+That is a strange feeling. The system worked so well it hid its own use from me.
+It also means I had no idea how much margin I had left, which is a worse problem
+than the outage.
+
+<Callout type="gotcha" title="Zero grid draw does not mean the grid is up">
+
+I spent a while unable to tell these apart from the data alone. My inverter
+reports 0 V on its grid input both when mains is genuinely absent *and*,
+plausibly, when it simply is not drawing. Cumulative grid energy had been flat
+for five days, which is exactly what good solar looks like.
+
+The resolution was to go and look at a socket that is not on the inverter. Worth
+knowing if you are building alerting on top of inverter telemetry: a sensor
+reading zero is not the same as a condition being true, and your history may not
+disambiguate it.
+
+</Callout>
+
+## Runtime, and knowing when to stop
+
+The bank is 5.1 kWh, and the inverter cuts out at 15% state of charge. At the
+house's overnight draw of roughly 250 W, that is somewhere around thirteen hours
+from a full battery. Enough to sleep through an outage and be recharging by
+mid-morning.
+
+Knowing that number turned out to matter for something other than comfort. The
+homelab runs on this inverter, so a long enough outage does not gently degrade.
+It drops a running hypervisor cold. I now have a watchdog that reads the
+battery over MQTT once a minute and shuts the servers down gracefully at 20%,
+while there is still an hour of margin. Two useful properties fell out of
+writing it:
+
+- It runs on the hypervisor, **not** in Home Assistant. Home Assistant is a
+  virtual machine on the box being shut down, and a guard that dies with the
+  thing it guards is not a guard.
+- It **fails open**. If it cannot read the battery, broker down or Pi rebooting,
+  it does nothing. The worst case is the hard cut I already had. Failing the
+  other way would mean powering the house's router off because a Raspberry Pi
+  restarted.
+
+## Buying hours instead of only shutting down
+
+The guard is a last resort. It fires at 20%, and everything it does is
+subtraction. The servers go away and stay away until I intervene.
+
+Between a full bank and that point there is a lot of runtime to be bought, and
+none of it requires turning off anything I would miss. That became obvious
+during an outage that ran **three days**, with the battery working down into the
+low forties while I watched a dashboard tell me how long I had left.
+
+So the house now sheds, in an order that matches what I would actually give up:
+
+```
+45%   dispenser        nobody notices
+35%   TV               switched at the socket, so standby goes too
+30%   living room system
+25%   deep freezer     last, because food
+────────────────────────────────────────
+20%   the guard shuts the servers down
+15%   the inverter cuts everything
+```
+
+Only during an outage. On mains a deep cycle is just a deep cycle, and nothing
+should be switching itself off because the sun was poor.
+
+The freezer sits deliberately at the bottom. It is the largest continuous load
+and the most tempting thing to cut first, and it is also the one whose cost is
+measured in spoiled food rather than inconvenience. Everything cheap goes first.
+
+A clock-driven layer sits under it: the freezer rides its thermal mass between
+03:00 and 07:00, and the dispenser is off overnight. The two layers collided in a
+way worth recording. A reconciler re-asserts the schedule every fifteen minutes,
+because a missed switch-*on* is invisible; you find out by opening the freezer
+days later. But during shedding that is exactly wrong: it would switch the
+freezer back on four minutes after a battery crisis switched it off, and neither
+automation would look broken on its own. So shedding raises a counter, and the
+reconciler stands down while it is above zero.
+
+<Callout type="warning" title="Two automations owning one socket is worse than either being wrong">
+
+The failure here is not that one of them is buggy. Both work exactly as written.
+They simply disagree about who owns the freezer, and the result is a socket that
+flips state every quarter of an hour with two green automations behind it.
+
+Whenever something can be switched by more than one rule, one of them has to be
+able to see the other's intent. A counter both sides read is enough; two rules
+that cannot see each other is not.
+
+</Callout>
+
+Three years ago this was a box that kept the lights on during cuts. It is now
+the primary supply, with the grid as the fallback. That is the inverse of what
+I designed, and I only found it out by measuring it.
