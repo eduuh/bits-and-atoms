@@ -2,10 +2,13 @@
 title: Opnsense - Firewall
 slug: opnsense-firewall
 publishedAt: '2026-03-04'
-summary: How firewall rules, aliases, and VLAN isolation come together in OPNsense.
+summary: >-
+  The rules that seal my IoT segment, in the order they have to be written, and
+  the two that look redundant until you understand what they are for.
 tags:
   - Infrastructure
-published: false
+  - Security
+published: true
 series:
   title: Home Lab
   order: 7
@@ -13,20 +16,188 @@ series:
 
 Routing moves packets. The firewall decides *which* packets are allowed to move.
 
-## Default deny
+This post was originally a sketch of rules I intended to write. They exist now,
+and the real ones are shaped differently from the plan, mostly because writing
+tests for them showed the plan had holes.
 
-The first rule is the only one that matters: nothing in or out unless something later in the list says yes. Every allow is deliberate. Every silence is a block.
+## Default deny, and where it actually lives
 
-## Aliases instead of IPs
+Nothing leaves the IoT segment unless a rule says so. That much was in the plan.
+What the plan missed is that "default deny" on the interface is not the whole
+boundary. A few of the important rules are *blocks* sitting between passes, and
+their position in the list is the entire point.
 
-I never type IP addresses into rules. Aliases stay readable a year later when I've forgotten what `192.168.30.42` is supposed to be. `IoT_Devices` is the list of smart plugs and cameras. `Trusted_PCs` is my workstations. `Blocked_Countries` is a GeoIP feed I don't want to think about.
+Here is the live rule set on the IoT interface, in evaluation order:
 
-## VLAN isolation
+```
+block   from 10.30.0.0/24 arriving on any other interface   # antispoof
+pass    DHCP  (bootpc -> bootps)
+pass    DNS   to (vlan01)          — the IoT gateway address only
+pass    NTP   to (vlan01)
+block   to (self)                  — every OTHER firewall address
+block   to (vlan01:network)        — device-to-device, inside the segment
+block   DNS   to anywhere          — tcp/udp 53, and 853 for DoT
+block   to 10.0.0.0/8
+block   to 172.16.0.0/12
+block   to 192.168.0.0/16
+```
 
-The rules I care most about keep the IoT VLAN from talking to LAN. Smart plugs phone home for firmware. Fine, let them out. They don't need to know my laptop exists, so that direction is blocked. LAN to IoT stays open so I can flip a switch from my phone.
+Anything not matched falls through to the internet, which is the only thing an
+IoT device is supposed to reach.
 
-That asymmetry is the whole point of VLAN isolation. Cheap hardware on the IoT side gets internet but not lateral access. If a camera with a hardcoded password gets popped, the blast radius is its own segment.
+## The two that look redundant
 
----
+**`pass` to `(vlan01)` followed by `block` to `(self)`.**
 
-*The rule that earns its keep is the one you wrote when you were paying attention.*
+These look like they contradict each other. They do not, and the distinction is
+one I got wrong first time round.
+
+In pf, `(self)` expands to **every address on the firewall, on every interface**,
+including the one facing my trusted network. A rule that permits DNS to `(self)`
+therefore lets an IoT device talk to `10.10.0.1`, which is precisely the boundary
+the segment exists to draw. My first version did exactly that, and the isolation
+test I had written did not catch it because the test was also wrong.
+
+The fix is to pass to the *specific interface address*, `(vlan01)`, the gateway
+the segment already uses. Then block `(self)` to catch everything else the
+firewall answers on.
+
+**`block` to `(vlan01:network)`.**
+
+This one blocks traffic from the IoT segment to the IoT segment: device to
+device, inside the same broadcast domain. A camera cannot reach a smart plug.
+
+Most of that isolation actually happens on the switch. Port horizons and client
+isolation on the access point mean the frames never reach the firewall at all.
+So this rule fires rarely. It is there because layer 2 isolation is configuration
+that can be undone by someone plugging a dumb switch into an access port, and
+this is the layer that still holds when that happens.
+
+## Aliases I actually use
+
+The plan called for `IoT_Devices`, `Trusted_PCs` and `Blocked_Countries`. None of
+those exist. What I ended up with is smaller and more specific:
+
+| Alias | Contents | Purpose |
+|---|---|---|
+| `doh_resolvers` | 30 addresses | the DNS bypass problem, below |
+| `vpn_clients` | `10.10.0.208/28` | which hosts egress through WireGuard |
+| `surfshark` | tunnel endpoint | the VPN peer |
+
+There is no GeoIP blocking. I considered it and left it out: blocking whole
+countries on a home connection mostly breaks CDNs, and the inbound surface is
+already two DHCP rules and nothing else.
+
+Alias-per-device turned out to be busywork. The segment *is* the policy. If
+something belongs on IoT, it goes on IoT and inherits the rules. Maintaining a
+list of MAC-to-alias mappings would be another thing to drift out of date.
+
+## Blocking port 53 is not blocking DNS
+
+The single most useful thing in the whole rule set is the block on
+`doh_resolvers`.
+
+An IoT device that wants to dodge your filtering does not use port 53. It uses
+DNS-over-HTTPS on 443, which is indistinguishable from ordinary web traffic
+unless you name the resolvers by address. So the rules block:
+
+| Port | What it blocks |
+|---|---|
+| tcp/udp 53 | plain DNS to anywhere but the gateway |
+| 853 | DNS-over-TLS |
+| 443 to the DoH resolver list | Cloudflare, Google, Quad9, AdGuard and the rest, 30 addresses |
+
+That last one is a maintenance burden and it is not airtight. A resolver I have
+not listed will get through. But it moves the bar from "any device can trivially
+bypass DNS filtering by default" to "a device has to deliberately use an obscure
+resolver", which is a meaningfully different threat.
+
+<Callout type="gotcha" title="Rules that pass a test but block nothing">
+
+Every rule above is verified by a script that runs from inside the segment: a
+network namespace on a VLAN sub-interface, with a real DHCP lease and no second
+route out.
+
+That detail is load-bearing. My first isolation test ran from a dual-homed
+machine that could reach the targets by a path avoiding the firewall entirely. It
+reported everything sealed. It was measuring nothing.
+
+I wrote up that failure and two others like it in
+[The Checks That Lied](/blog/checks-that-lied). All three produced confident
+green ticks next to claims that were false, which is worse than no test at all.
+
+</Callout>
+
+## The day I locked myself out of it
+
+Every rule above is worth nothing if you cannot get to the box.
+
+Editing the configuration programmatically, I loaded a modified config back in
+and it silently dropped root's **authorized SSH keys**. No warning, no log line,
+no change to anything visible. The firewall carried on perfectly: routing,
+DNS, the web UI, the internet, all fine. The only thing that had changed was
+that neither my laptop nor the hypervisor could log in any more.
+
+That would have been a mild annoyance except for what it took down with it. My
+network monitoring reads gateway latency and packet loss out of `dpinger` over
+SSH. With SSH gone it read nothing. And because of a default I have since fixed,
+it published *nothing* as **100% packet loss**. So for a day the house
+dashboard confidently reported the internet was down, while a speed test pulled
+220 Mbit/s through the same link.
+
+Two separate failures, one root cause, and neither announced itself.
+
+### Getting back in
+
+The way back was the **API**. OPNsense exposes its user model over REST, so with
+a key and secret I could write the authorized keys back without ever touching a
+console.
+
+Except there were no API keys on the firewall. That is a credential you create
+in the web UI, which I could still reach, because only SSH had broken. Had the
+lockout been broader, the API would have been unavailable for exactly the same
+reason.
+
+Then the trap that this firewall has now caught me with four times:
+
+```json
+{"result": "saved"}
+```
+
+The key was saved and SSH still refused me. On OPNsense, **saved is not
+applied**. Configuration is written immediately, but the service that owns it
+renders its files only on an explicit reload. I have hit this with WireGuard, with
+Tailscale, with the captive portal's templates, and now with users. The
+service responsible is called `login`, and restarting it is what actually writes
+`~/.ssh/authorized_keys`.
+
+The API returns `saved` for the write alone. It reads exactly like success.
+
+<Callout type="warning" title="Two ways in that fail for the same reason are one way in">
+
+SSH and the web UI both depend on the firewall being up, reachable, and
+correctly configured. That is a lot of shared surface for something billed as a
+backup route.
+
+The fix was a path with a genuinely different failure mode: the firewall is a VM,
+so I installed the QEMU guest agent. The hypervisor can now execute commands
+inside it through the virtio serial channel. No network, no credentials, no
+sshd. What would have been a dead end becomes one command.
+
+It cost nothing. The channel was already present in the VM's configuration; only
+the guest side was missing, so no reboot was needed. Worth checking before you
+need it, because the moment you need it is the moment you cannot install it.
+
+</Callout>
+
+## What is not here
+
+There is no IPS. Suricata is installed and not running, because the firewall VM
+has 2.5 GB of RAM and a real ruleset wants most of a gigabyte. That is a memory
+upgrade and a reboot away, and until it runs I am not going to claim it as part
+of the design.
+
+The inbound surface is deliberately dull: two DHCP rules on WAN, no port
+forwards, UPnP off so nothing can open its own. The interesting security work in
+this house is all outbound. It is deciding what my own devices are allowed to
+reach.

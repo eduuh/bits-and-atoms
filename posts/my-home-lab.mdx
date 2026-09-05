@@ -2,7 +2,10 @@
 title: My Home Lab
 slug: my-home-lab
 publishedAt: '2026-01-13'
-summary: A tour of my Kubernetes-based homelab running on Talos Linux with GitOps, self-hosted services, and full observability.
+updatedAt: '2026-08-14'
+summary: >-
+  A tour of my Kubernetes homelab on Talos Linux with GitOps and full
+  observability, and why I tore the whole thing down in August 2026.
 tags:
   - Self-Hosted
 published: true
@@ -11,6 +14,25 @@ series:
   title: Home Lab
   order: 2
 ---
+
+<Callout type="warning" title="Update, August 2026: this cluster no longer exists">
+
+Everything below describes a Kubernetes homelab that I have since torn down. It is
+left up as a record, not a recommendation.
+
+Two of the three nodes are gone. I rebuilt the AMD mini PC as a desktop, and the
+ACEMAGIC died. That left one machine, and a single-node Kubernetes cluster is a lot
+of moving parts to justify. Talos, Flux, Longhorn, MetalLB and the rest came down
+with it.
+
+What replaced it is smaller and, honestly, more useful day to day: one Glovary
+running Proxmox, with OPNsense as a VM doing segmented routing for the house. The
+interesting problems moved from orchestration to networking.
+
+That setup is written up in [My Home Lab, V2](/blog/my-home-lab-v2). This post stays
+as it was.
+
+</Callout>
 
 A homelab isn't just servers in a closet. It's a playground for learning, a quiet production environment for the stuff I actually use, and a way to keep my own data on my own machines. Here's the full tour.
 
