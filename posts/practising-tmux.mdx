@@ -1,0 +1,186 @@
+---
+title: 'Practising the tmux features I keep overlooking'
+slug: practising-tmux
+publishedAt: '2026-11-26'
+summary: >-
+  Five hands-on exercises for searching terminal output, extracting text,
+  rearranging panes, floating a shell, and recovering earlier copies.
+tags:
+  - Workflow
+  - Tmux
+published: false
+status: draft
+---
+
+I checked my tmux key log and found 334 presses of the project picker, while searchable scrollback, pane rearrangement and the buffer picker had little or no recorded shortcut use.
+
+Same picker. Again.
+
+I've built a terminal workflow around tmux, but installing a feature doesn't make it a habit. I'd rather practise five things with fake output than memorise another shortcut table.
+
+**Use a spare window.** These exercises don't need a build, a running agent or a real error. Leave those panes alone.
+
+## Before touching the keyboard
+
+This walkthrough uses my live configuration: Ctrl+Space is the prefix, copy mode uses vi keys, and tmux reports version 3.8. When I write "prefix, Space", press Ctrl+Space, release it, then press Space.
+
+Two separate presses.
+
+Check your own server first:
+
+```bash
+tmux -V
+tmux show-options -gv prefix
+tmux show-options -gwv mode-keys
+tmux list-keys -T prefix
+```
+
+These show the version, prefix, copy-mode keys and current bindings.
+
+Searching scrollback and moving panes are native tmux features, but a reader with a stock configuration won't get my shortcuts just by installing the same tmux version.
+
+| Exercise | What it needs |
+|----------|---------------|
+| Search output | Native copy mode, with vi keys |
+| Extract text | The extrakto or tmux-fingers plugin and its binding |
+| Rearrange panes | Native tmux commands, with my split and join bindings |
+| Float a shell | The native floating-pane commands present on my server |
+| Recover copies | Native tmux buffers |
+
+In my configuration, prefix then `w` opens a new window in the current directory. Do that in the blog checkout.
+
+Fill it with something harmless:
+
+```bash
+printf '%s\n' \
+  'TMUX-PRACTICE: pretend build failed' \
+  'file=/tmp/tmux-practice/example.txt' \
+  'url=https://example.com/tmux-practice' \
+  'request_id=practice-4821'
+seq 1 100
+```
+
+This prints searchable markers followed by enough numbered lines to push them into scrollback. It doesn't create the named file or contact the URL.
+
+## 1. Find the line without scrolling
+
+Press prefix, then Space. You're in copy mode.
+
+Type `/TMUX-PRACTICE` and press Enter. Use `n` for the next match and `N` to search in the opposite direction. If the first search doesn't find it, try `?TMUX-PRACTICE` to search backwards.
+
+Now search for `request_id`. Move the cursor to the value, press `v` to start selecting, and use the movement keys to cover `practice-4821`. Press `y` to copy and leave copy mode.
+
+No dragging.
+
+**Checkpoint:** find and copy the ID without dragging the scrollbar.
+
+To leave copy mode without copying, press `q`. That's a copy-mode key, not an instruction to press prefix then `q`.
+
+## 2. Extract the text instead
+
+My prefix then `u` opens extrakto, which fuzzy-searches retained pane output.
+
+Search for `practice-4821`. Enter copies the selected text. Tab inserts it into the pane without submitting a command. Only try insertion in the spare shell, at an empty prompt.
+
+For text already on screen, print the sample again without the numbered lines, then press prefix and capital `F` to have tmux-fingers label things such as URLs and paths with letter hints.
+
+Press a hint. It copies the text.
+
+Don't install both plugins just for this exercise. Start with whichever is already available.
+
+Checkpoint: copy the fake path or ID without selecting it character by character. Search reaches into scrollback; hints work on visible output.
+
+## 3. Move a running pane
+
+Press prefix then `v` to split right in my configuration. Run this in the new pane:
+
+```bash
+while :; do date '+%H:%M:%S'; sleep 2; done
+```
+
+This prints the time until you stop it with Ctrl+C.
+
+While the clock is running, press prefix then `!`. tmux breaks that pane into its own window. The command stays running.
+
+Return to the original practice window using prefix then Ctrl+j, the native session tree, then press prefix and `@` and choose the clock window to pull its pane alongside yours.
+
+Try prefix then `z` to zoom the clock pane. Repeat to unzoom. Prefix then Shift+arrow resizes it in my configuration.
+
+**Checkpoint:** the clock continues through the move. You changed its layout, not its process.
+
+Stop the clock with Ctrl+C when you're done.
+
+## 4. Float a shell, then tile it
+
+My live server has a prefix then Shift+Tab binding that creates a floating pane. Check yours:
+
+```bash
+tmux list-keys -T prefix BTab
+tmux list-commands | grep '^new-pane '
+```
+
+These inspect the binding and command without opening anything.
+
+Press the shortcut if it's present. Type this in the floating shell:
+
+```bash
+printf '%s\n' 'This is a persistent shell, not a disposable popup.'
+```
+
+It prints a marker you can recognise after moving the pane.
+
+On my server, right-clicking the pane opens a menu with a Tile action. Choose it.
+
+Same shell, different layout.
+
+The marker remains in its history, and the pane menu can float it again.
+
+Checkpoint: float and tile the shell without starting a replacement shell.
+
+I wouldn't teach this as a shortcut everyone has. The floating-pane exercise depends on the commands and bindings available on the server running tmux, which may be the remote machine.
+
+## 5. Recover an earlier copy
+
+tmux buffers and the system clipboard aren't the same thing. Make two clearly named practice buffers:
+
+```bash
+tmux set-buffer -b practice-first 'practice-4821'
+tmux set-buffer -b practice-second '/tmp/tmux-practice/example.txt'
+```
+
+This creates two tmux buffers without changing the system clipboard. If you've used these names before, it replaces those practice buffers.
+
+Press prefix then `=` to open the buffer picker on my server. Choose the first buffer and paste it into an empty shell prompt. You should get the ID, even though you created the path buffer afterwards.
+
+Don't press Enter at the shell prompt. Clear the inserted text with Ctrl+C.
+
+Remove only the practice buffers:
+
+```bash
+tmux delete-buffer -b practice-first
+tmux delete-buffer -b practice-second
+```
+
+This leaves your other tmux buffers alone.
+
+## One combined exercise
+
+Print the sample output again. Without mouse selection:
+
+1. Find the pretend failure in scrollback.
+2. Extract the request ID.
+3. Split a shell, run the clock, and move it into another window and back.
+4. Float a shell and tile that same shell again.
+5. Create the two practice buffers and recover the older one.
+
+Stop the clock and remove the practice buffers afterwards. Leave the practice window open if you want another attempt.
+
+**The test is doing it twice**, with this page closed for the second attempt.
+
+## What this doesn't prove
+
+My usage log had gaps and counted mouse actions separately, so a missing shortcut count doesn't prove I never used a feature through a menu, a script or another binding.
+
+The live bindings differed from the repository's cheat-sheet, too. Inspect the active server before copying a shortcut, especially a close or kill shortcut. Plugins and clipboard behaviour can differ across local and remote tmux.
+
+These exercises use fake output on purpose. Once I can repeat them without checking the keys, I'll try them in a real debugging session.
