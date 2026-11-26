@@ -18,11 +18,13 @@ Same picker. Again.
 
 I've built a terminal workflow around tmux, but installing a feature doesn't make it a habit. I'd rather practise five things with fake output than memorise another shortcut table.
 
-**Use a spare window.** These exercises don't need a build, a running agent or a real error. Leave those panes alone.
+<Callout type="warning" title="Use a spare window">
+  These exercises don't need a build, a running agent or a real error. Leave those panes alone.
+</Callout>
 
 ## Before touching the keyboard
 
-This walkthrough uses my live configuration: Ctrl+Space is the prefix, copy mode uses vi keys, and tmux reports version 3.8. When I write "prefix, Space", press Ctrl+Space, release it, then press Space.
+This walkthrough uses my live configuration: <Kbd>Ctrl+Space</Kbd> is the prefix, copy mode uses vi keys, and tmux reports version 3.8. When I write "prefix, Space", press <Kbd>Ctrl+Space</Kbd>, release it, then press <Kbd>Space</Kbd>.
 
 Two separate presses.
 
@@ -47,7 +49,7 @@ Searching scrollback and moving panes are native tmux features, but a reader wit
 | Float a shell | The native floating-pane commands present on my server |
 | Recover copies | Native tmux buffers |
 
-In my configuration, prefix then `w` opens a new window in the current directory. Do that in the blog checkout.
+In my configuration, prefix then <Kbd>w</Kbd> opens a new window in the current directory. Do that in the blog checkout.
 
 Fill it with something harmless:
 
@@ -62,57 +64,85 @@ seq 1 100
 
 This prints searchable markers followed by enough numbered lines to push them into scrollback. It doesn't create the named file or contact the URL.
 
+The demo below replays only the four marker lines. It doesn't run commands in your terminal.
+
+<Terminal
+  title="Practice output"
+  typingSpeed={15}
+  commands={[
+    {
+      input: "printf '%s\\n' 'TMUX-PRACTICE: pretend build failed' 'file=/tmp/tmux-practice/example.txt' 'url=https://example.com/tmux-practice' 'request_id=practice-4821'",
+    },
+    {
+      output: "TMUX-PRACTICE: pretend build failed",
+    },
+    { output: "file=/tmp/tmux-practice/example.txt" },
+    { output: "url=https://example.com/tmux-practice" },
+    { output: "request_id=practice-4821" },
+  ]}
+/>
+
 ## 1. Find the line without scrolling
 
-Press prefix, then Space. You're in copy mode.
+Press prefix, then <Kbd>Space</Kbd>. You're in copy mode.
 
-Type `/TMUX-PRACTICE` and press Enter. Use `n` for the next match and `N` to search in the opposite direction. If the first search doesn't find it, try `?TMUX-PRACTICE` to search backwards.
+Type `/TMUX-PRACTICE` and press <Kbd>Enter</Kbd>. Use <Kbd>n</Kbd> for the next match and <Kbd>Shift+N</Kbd> to search in the opposite direction. If the first search doesn't find it, try `?TMUX-PRACTICE` to search backwards.
 
-Now search for `request_id`. Move the cursor to the value, press `v` to start selecting, and use the movement keys to cover `practice-4821`. Press `y` to copy and leave copy mode.
+Now search for `request_id`. Move the cursor to the value, press <Kbd>v</Kbd> to start selecting, and use the movement keys to cover `practice-4821`. Press <Kbd>y</Kbd> to copy and leave copy mode.
 
 No dragging.
 
-**Checkpoint:** find and copy the ID without dragging the scrollbar.
+<Callout type="success" title="Checkpoint">
+  Find and copy the ID without dragging the scrollbar.
+</Callout>
 
-To leave copy mode without copying, press `q`. That's a copy-mode key, not an instruction to press prefix then `q`.
+<Callout type="warning" title="The key table matters">
+  To leave copy mode without copying, press <Kbd>q</Kbd>. That's a copy-mode key, not an instruction to press prefix then <Kbd>q</Kbd>. The same key can do something different outside copy mode.
+</Callout>
 
 ## 2. Extract the text instead
 
-My prefix then `u` opens extrakto, which fuzzy-searches retained pane output.
+My prefix then <Kbd>u</Kbd> opens extrakto, which fuzzy-searches retained pane output.
 
-Search for `practice-4821`. Enter copies the selected text. Tab inserts it into the pane without submitting a command. Only try insertion in the spare shell, at an empty prompt.
+Search for `practice-4821`. <Kbd>Enter</Kbd> copies the selected text. <Kbd>Tab</Kbd> inserts it into the pane without submitting a command. Only try insertion in the spare shell, at an empty prompt.
 
-For text already on screen, print the sample again without the numbered lines, then press prefix and capital `F` to have tmux-fingers label things such as URLs and paths with letter hints.
+For text already on screen, print the sample again without the numbered lines, then press prefix and <Kbd>Shift+F</Kbd> to have tmux-fingers label things such as URLs and paths with letter hints.
 
 Press a hint. It copies the text.
 
 Don't install both plugins just for this exercise. Start with whichever is already available.
 
-Checkpoint: copy the fake path or ID without selecting it character by character. Search reaches into scrollback; hints work on visible output.
+<Callout type="success" title="Checkpoint">
+  Copy the fake path or ID without selecting it character by character.
+</Callout>
+
+<mark>Search reaches into scrollback; hints work on visible output.</mark>
 
 ## 3. Move a running pane
 
-Press prefix then `v` to split right in my configuration. Run this in the new pane:
+Press prefix then <Kbd>v</Kbd> to split right in my configuration. Run this in the new pane:
 
 ```bash
 while :; do date '+%H:%M:%S'; sleep 2; done
 ```
 
-This prints the time until you stop it with Ctrl+C.
+This prints the time until you stop it with <Kbd>Ctrl+C</Kbd>.
 
-While the clock is running, press prefix then `!`. tmux breaks that pane into its own window. The command stays running.
+While the clock is running, press prefix then <Kbd>!</Kbd>. tmux breaks that pane into its own window. The command stays running.
 
-Return to the original practice window using prefix then Ctrl+j, the native session tree, then press prefix and `@` and choose the clock window to pull its pane alongside yours.
+Return to the original practice window using prefix then <Kbd>Ctrl+J</Kbd>, the native session tree, then press prefix and <Kbd>@</Kbd> and choose the clock window to pull its pane alongside yours.
 
-Try prefix then `z` to zoom the clock pane. Repeat to unzoom. Prefix then Shift+arrow resizes it in my configuration.
+Try prefix then <Kbd>z</Kbd> to zoom the clock pane. Repeat to unzoom. Prefix then <Kbd>Shift+arrow</Kbd> resizes it in my configuration.
 
-**Checkpoint:** the clock continues through the move. You changed its layout, not its process.
+<Callout type="success" title="Checkpoint">
+  Check that the clock continues through the move. You changed its layout, not its process.
+</Callout>
 
-Stop the clock with Ctrl+C when you're done.
+Stop the clock with <Kbd>Ctrl+C</Kbd> when you're done.
 
 ## 4. Float a shell, then tile it
 
-My live server has a prefix then Shift+Tab binding that creates a floating pane. Check yours:
+My live server has a prefix then <Kbd>Shift+Tab</Kbd> binding that creates a floating pane. Check yours:
 
 ```bash
 tmux list-keys -T prefix BTab
@@ -131,11 +161,13 @@ It prints a marker you can recognise after moving the pane.
 
 On my server, right-clicking the pane opens a menu with a Tile action. Choose it.
 
-Same shell, different layout.
+<mark>Same shell, different layout.</mark>
 
 The marker remains in its history, and the pane menu can float it again.
 
-Checkpoint: float and tile the shell without starting a replacement shell.
+<Callout type="success" title="Checkpoint">
+  Float and tile the shell without starting a replacement shell.
+</Callout>
 
 I wouldn't teach this as a shortcut everyone has. The floating-pane exercise depends on the commands and bindings available on the server running tmux, which may be the remote machine.
 
@@ -150,9 +182,13 @@ tmux set-buffer -b practice-second '/tmp/tmux-practice/example.txt'
 
 This creates two tmux buffers without changing the system clipboard. If you've used these names before, it replaces those practice buffers.
 
-Press prefix then `=` to open the buffer picker on my server. Choose the first buffer and paste it into an empty shell prompt. You should get the ID, even though you created the path buffer afterwards.
+Press prefix then <Kbd>=</Kbd> to open the buffer picker on my server. Choose the first buffer and paste it into an empty shell prompt. You should get the ID, even though you created the path buffer afterwards.
 
-Don't press Enter at the shell prompt. Clear the inserted text with Ctrl+C.
+Don't press <Kbd>Enter</Kbd> at the shell prompt. Clear the inserted text with <Kbd>Ctrl+C</Kbd>.
+
+<Callout type="success" title="Checkpoint">
+  Recover `practice-4821` after copying the path. The older buffer is still available.
+</Callout>
 
 Remove only the practice buffers:
 
@@ -175,7 +211,7 @@ Print the sample output again. Without mouse selection:
 
 Stop the clock and remove the practice buffers afterwards. Leave the practice window open if you want another attempt.
 
-**The test is doing it twice**, with this page closed for the second attempt.
+The test is <mark>doing it twice</mark>, with this page closed for the second attempt.
 
 ## What this doesn't prove
 
