@@ -30,13 +30,15 @@ I also kept `r` in operator-pending mode for Flash's "remote", which lets you op
 
 ```lua
 { ";;", function()
-    require("oil").open(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":h"))
+    local buf_path = vim.api.nvim_buf_get_name(0)
+    local cwd = buf_path ~= "" and vim.fn.fnamemodify(buf_path, ":h") or vim.fn.getcwd()
+    require("oil").open(cwd)
   end }
 ```
 
-[oil.nvim](https://github.com/stevearc/oil.nvim) turns a directory into a buffer you edit like text. Add a line to create a file. Delete a line to delete a file. Rename a line to rename a file. `:w` applies. Semicolon-semicolon opens oil in the current file's directory, which is ~95% of the time what I want.
+[oil.nvim](https://github.com/stevearc/oil.nvim) turns a directory into a buffer you edit like text. Add a line to create a file. Delete a line to delete a file. Rename a line to rename a file. `:w` applies. Semicolon-semicolon opens oil in the current file's directory, which is ~95% of the time what I want. On an empty buffer it falls back to the working directory.
 
-The reason `;;` and not, say, `<leader>e`: `<leader>` sequences cost a timeout delay by default. `;;` is instant and reachable with one finger. I only use this map enough to notice the difference, but I notice.
+The reason `;;` and not, say, `<leader>e`: it's the same key twice, with one finger. The cost lands on vim's own `;`, which repeats the last `f` jump. Thirteen of my maps start with `;` (`;;`, `;c`, the debugger keys and quickfix), so a bare `;` waits a full second for a second key before it fires. Flash took over my `f` jumps, so I rarely pay it.
 
 ## Save: `<C-s>` in both insert and normal modes
 
@@ -59,38 +61,53 @@ Vim's built-in `<C-^>` (pronounced "control caret") swaps between the current bu
 ## Git: the `g*` cluster
 
 ```lua
-map("n", "gn", gs.next_hunk,     "Next hunk")
-map("n", "gp", gs.prev_hunk,     "Prev hunk")
-map("n", "gs", gs.stage_hunk,    "Stage hunk")
-map("n", "gu", gs.undo_stage,    "Undo stage")
-map("n", "gb", gs.blame_line,    "Blame line")
+map("gn", function() gs.nav_hunk("next") end, "Next hunk")
+map("gp", function() gs.nav_hunk("prev") end, "Prev hunk")
+map("gs", gs.stage_hunk, "Stage hunk")
+map("gu", gs.stage_hunk, "Unstage hunk (toggle)")
+map("gb", gs.blame_line, "Blame line")
 ```
 
-[gitsigns.nvim](https://github.com/lewis6991/gitsigns.nvim) gets a whole letter cluster under `g*`. Navigate hunks with <Kbd>gn</Kbd>/<Kbd>gp</Kbd>, stage with <Kbd>gs</Kbd>, undo with <Kbd>gu</Kbd>, blame with <Kbd>gb</Kbd>. The mental model is "`g` for git, second char for action" and it collapses a whole git-stage-commit loop into one hand.
+[gitsigns.nvim](https://github.com/lewis6991/gitsigns.nvim) gets a whole letter cluster under `g*`. Navigate hunks with <Kbd>gn</Kbd>/<Kbd>gp</Kbd>, stage with <Kbd>gs</Kbd>, unstage with <Kbd>gu</Kbd>, blame with <Kbd>gb</Kbd>. Yes, `gs` and `gu` call the same function. gitsigns deprecated `undo_stage_hunk`, and `stage_hunk` on a hunk that's already staged unstages it. So `gu` is a second name for the same toggle. The mental model is "`g` for git, second char for action" and it collapses a whole git-stage-commit loop into one hand.
 
 For anything that isn't a hunk-level action (viewing commit history, checking out branches, writing a commit message) I punch out to LazyGit:
 
 ```lua
-{ ";c", function() vim.cmd.LazyGit() end }
+local lazygit = Terminal:new({ cmd = "lazygit", direction = "float", hidden = true })
+vim.keymap.set("n", ";c", function() lazygit:toggle() end)
 ```
 
-<Kbd>;c</Kbd> opens it as a floating terminal. That's my "git TUI" escape hatch. nvim itself also runs as a floating popup, managed by tmux and scoped to the current git worktree. The wiring is in [One branch, one window](/blog/one-branch-one-window).
+<Kbd>;c</Kbd> toggles it as a floating toggleterm terminal, so a second <Kbd>;c</Kbd> hides it with the session still running. That's my "git TUI" escape hatch. nvim itself also runs as a floating popup, managed by tmux and scoped to the current git worktree. The wiring is in [One branch, one window](/blog/one-branch-one-window).
 
-## LSP: the 0.11 built-in defaults
+## LSP: the built-ins, plus fzf for jumping
 
-This is the section where I deleted the most keymaps. Nvim 0.11 ships with these as defaults:
+Nvim ships LSP keymaps under `gr`. Most arrived in 0.11, and 0.12 added two more:
 
-| Key | Action |
-|-----|--------|
-| <Kbd>K</Kbd> | Hover docs |
-| <Kbd>grn</Kbd> | Rename |
-| <Kbd>gra</Kbd> | Code action |
-| <Kbd>grr</Kbd> | References (via `vim.ui.select`) |
-| <Kbd>gri</Kbd> | Implementations |
-| <Kbd>grt</Kbd> | Type definition |
-| <Kbd>grx</Kbd> | Code lens (0.12) |
+| Key | Action | Since |
+|-----|--------|-------|
+| <Kbd>K</Kbd> | Hover docs | 0.10 |
+| <Kbd>grn</Kbd> | Rename | 0.11 |
+| <Kbd>gra</Kbd> | Code action | 0.11 |
+| <Kbd>grr</Kbd> | References, into the quickfix list | 0.11 |
+| <Kbd>gri</Kbd> | Implementations | 0.11 |
+| <Kbd>grt</Kbd> | Type definition | 0.12 |
+| <Kbd>grx</Kbd> | Code lens | 0.12 |
 
-I used to map `<leader>rn`, `<leader>ca`, `<leader>gd`, a whole grid of `<leader>` stuff. Then I found out Neovim was shipping sensible defaults and mine were worse. The defaults also play nicely with fzf-lua. It intercepts `vim.ui.select`, so `grr` and `gri` pop up an fzf picker instead of a minimalist floating list.
+I used to map `<leader>rn` and `<leader>ca`. Then I found out Neovim was shipping sensible defaults and mine were worse.
+
+For jumping around I went the other way. When a server attaches, the short forms open fzf-lua pickers with a preview:
+
+```lua
+map("gd", fzf.lsp_definitions, "LSP: definitions")
+map("gr", fzf.lsp_references, "LSP: references")
+map("gi", fzf.lsp_implementations, "LSP: implementations")
+map("gt", fzf.lsp_typedefs, "LSP: type definitions")
+map("gS", fzf.lsp_document_symbols, "LSP: document symbols")
+```
+
+That `gr` has a cost I only noticed while checking this post. It's buffer-local, and the built-in `grn`, `gra`, `grr`, `gri`, `grt` and `grx` are still mapped, so a bare `gr` is ambiguous. Nvim waits `timeoutlen` for a third key before it opens references. That's 1000 ms by default and I never changed it.
+
+So `grn` is instant. `gr` on its own takes a second.
 
 ## Fuzzy: `<C-p>` for files
 
@@ -105,7 +122,7 @@ map("n", "<leader>fw", fzf.live_grep)
 
 What I removed in the same pass, for honesty.
 
-`<leader>ld`, `<leader>li`, and `<leader>lt` were LSP navigation maps that duplicated `gd`, `gi`, and `gt` from the built-in defaults. The Treesitter text-object maps (`af`, `ic`, `aa`, and friends) sounded clever but I never reached for them; the general vim text objects (`iw`, `ip`, `i"`, `i(`) cover 95% of what I actually needed. A competitive-programming plugin had `;r` and `;a` mapped. I haven't done competitive programming in five years and they were dead weight. And every AI plugin keymap went too. I closed that door and went back to a quieter editor.
+`<leader>ld`, `<leader>li`, and `<leader>lt` were LSP navigation maps that duplicated `gd`, `gi`, and `gt`. The Treesitter text-object maps (`af`, `ic`, `aa`, and friends) sounded clever but I never reached for them; the general vim text objects (`iw`, `ip`, `i"`, `i(`) cover 95% of what I actually needed. A competitive-programming plugin had `;r` and `;a` mapped. I haven't done competitive programming in five years and they were dead weight. And every AI plugin keymap went too. That held until July, when Magenta came in with its `<leader>m` keys. They're the only AI maps in the config.
 
 The test I apply, stolen from the woodworking people: if you don't reach for a tool in six months, it goes in a drawer. If you don't reach for it in a year, it leaves the shop.
 
