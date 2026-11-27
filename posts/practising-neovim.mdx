@@ -1,0 +1,217 @@
+---
+title: 'A fifteen-minute Neovim drill I can repeat every day'
+slug: practising-neovim
+publishedAt: '2026-11-27'
+summary: >-
+  A daily practice routine for my Neovim config: a five-minute warm-up on
+  motions and files, then one rotating drill for LSP, debugging, git review
+  or HTTP requests with rest.nvim.
+tags:
+  - Neovim
+  - Workflow
+  - practise
+published: false
+status: draft
+---
+
+My Neovim config has a debugger, a diff reviewer, an HTTP client and an LSP setup that can rename across a monorepo. On a normal day I use about four of its keys.
+
+The rest sit in `docs/keymaps.md`, which I've read more often than I've practised.
+
+Reading a keymap table doesn't build a habit. <mark>Doing the same small thing every day does.</mark> So this is a routine, not a reference: five minutes of warm-up that never changes, then one ten-minute drill that rotates through the week.
+
+<Callout type="warning" title="Practise on throwaway files">
+  Every exercise runs in a scratch directory under `/tmp`. Nothing here touches a real branch, a running server you care about, or an unsaved buffer.
+</Callout>
+
+## Before touching the keyboard
+
+This uses my live config: <Kbd>Space</Kbd> is the leader, [flash.nvim](https://github.com/folke/flash.nvim) owns <Kbd>s</Kbd>, oil.nvim opens on <Kbd>;;</Kbd>, and fzf-lua does the picking. When I write <Kbd>Space</Kbd> <Kbd>f</Kbd> <Kbd>w</Kbd>, that's three separate presses.
+
+Check your own before copying any of mine:
+
+```vim
+:verbose nmap s
+:verbose nmap ;;
+:verbose nmap <leader>hr
+```
+
+Each shows what the key does and which file set it. If one comes back empty, that exercise needs a different key on your machine.
+
+Build the practice directory once:
+
+```bash
+mkdir -p /tmp/nvim-practice && cd /tmp/nvim-practice
+git init -q
+cat > cart.js <<'EOF'
+function lineTotal(item) {
+  return item.price * item.qty;
+}
+
+function cartTotal(items) {
+  let total = 0;
+  for (let i = 0; i <= items.length; i++) {
+    total += lineTotal(items[i]);
+  }
+  return total;
+}
+
+const items = [
+  { name: 'tea', price: 120, qty: 2 },
+  { name: 'bread', price: 65, qty: 1 },
+];
+
+console.log('PRACTICE total:', cartTotal(items));
+EOF
+git add . && git commit -qm 'practice: starting point'
+```
+
+This creates a git repo with one small JavaScript file. The loop has a bug on purpose: `<=` reads one item past the end.
+
+## The warm-up (every day, five minutes)
+
+Open the file with `nvim cart.js`, then do these four in order without looking anything up.
+
+**Jump, don't scroll.** Press <Kbd>s</Kbd>, type `qt`, then press the label that appears on `qty` in the `bread` line. Do the same for `<=`. Then use `ci{` inside `lineTotal` and type the same body back. You're practising the jump and the text object, not the edit.
+
+**Operate from a distance.** Put the cursor on line 1. Type `yr`, then flash to `'tea'` and finish with `i'`. That yanks `tea` without moving your cursor. Paste it on line 1 with `p`, then undo with `u`.
+
+**Files without a tree.** Press <Kbd>;;</Kbd> to open oil in the file's directory. Make a new line, type `notes.md`, save with `:w` and confirm with <Kbd>y</Kbd>. Oil creates the file. Delete that line, `:w` and confirm again, and the file is gone.
+
+**Find, don't browse.** <Kbd>Space</Kbd> <Kbd>f</Kbd> <Kbd>w</Kbd> for live grep, search `PRACTICE`, press <Kbd>Enter</Kbd>. Then <Kbd>Space</Kbd> <Kbd>r</Kbd> <Kbd>f</Kbd> for recent files and jump back.
+
+<Callout type="success" title="Checkpoint">
+  All four, with no mouse, no arrow keys and no `:help`. If one needs a lookup, it's tomorrow's warm-up too.
+</Callout>
+
+## The rotating drill (ten minutes)
+
+One per day. I go Monday to Friday and start over; skipping a day doesn't matter, skipping a drill does.
+
+| Day | Drill | What it needs |
+|-----|-------|---------------|
+| Mon | LSP navigation and rename | A JS/TS language server |
+| Tue | Find the bug with the debugger | nvim-dap and `js-debug-adapter` |
+| Wed | Review your own change | gitsigns and diffview.nvim |
+| Thu | Call an API from a `.http` file | rest.nvim and `curl` |
+| Fri | Quickfix round trip | fzf-lua |
+
+### Monday: let the language server move you
+
+In `cart.js`, put the cursor on `lineTotal` inside the loop.
+
+1. <Kbd>g</Kbd> <Kbd>d</Kbd> jumps to its definition. <Kbd>Ctrl+O</Kbd> brings you back.
+2. <Kbd>g</Kbd> <Kbd>r</Kbd> lists the references. There's one call and one definition.
+3. <Kbd>K</Kbd> shows the hover. Press it twice to step into the float, <Kbd>q</Kbd> to leave.
+4. <Kbd>g</Kbd> <Kbd>r</Kbd> <Kbd>n</Kbd> renames it to `subtotal`. Both sites change.
+5. <Kbd>g</Kbd> <Kbd>S</Kbd> opens the document symbols. Jump to `cartTotal` from there.
+
+<Callout type="success" title="Checkpoint">
+  Rename, then `:w`, then <Kbd>u</Kbd> back to `lineTotal`. One undo reverts every renamed site.
+</Callout>
+
+### Tuesday: catch the off-by-one in the act
+
+Run it first, so you know what wrong looks like:
+
+```bash
+node cart.js
+```
+
+It throws a `TypeError` reading `price` of `undefined`.
+
+Now debug it instead of reading it:
+
+1. Put the cursor on `total += …` and press <Kbd>;</Kbd> <Kbd>b</Kbd>. A `●` appears.
+2. <Kbd>Space</Kbd> <Kbd>r</Kbd> <Kbd>d</Kbd> starts the current file under the Node debugger.
+3. When it stops, put the cursor on `i` and press <Kbd>Space</Kbd> <Kbd>d</Kbd> <Kbd>e</Kbd> to evaluate it.
+4. <Kbd>;</Kbd> <Kbd>d</Kbd> continues to the next hit. Watch `i` reach `2` while `items.length` is still `2`.
+5. <Kbd>;</Kbd> <Kbd>t</Kbd> ends the session. Change `<=` to `<` and rerun `node cart.js`.
+
+<Callout type="success" title="Checkpoint">
+  You saw `i` equal `items.length` inside the loop, in the debugger, before you fixed it. The output should be `PRACTICE total: 305`.
+</Callout>
+
+Then `git checkout cart.js` puts the bug back for next week.
+
+### Wednesday: review a change like a pull request
+
+Make two small edits in `cart.js`: change `120` to `130`, and add a `{ name: 'milk', price: 60, qty: 1 }` item.
+
+1. <Kbd>g</Kbd> <Kbd>n</Kbd> and <Kbd>g</Kbd> <Kbd>p</Kbd> move between hunks in the buffer.
+2. <Kbd>Space</Kbd> <Kbd>g</Kbd> <Kbd>p</Kbd> previews a hunk; <Kbd>g</Kbd> <Kbd>s</Kbd> stages it.
+3. <Kbd>Space</Kbd> <Kbd>v</Kbd> <Kbd>d</Kbd> opens Diffview. One hunk is staged, the other isn't, and the file panel shows both states.
+4. <Kbd>Space</Kbd> <Kbd>v</Kbd> <Kbd>c</Kbd> closes it.
+
+<Callout type="success" title="Checkpoint">
+  Stage exactly one of the two edits without leaving Neovim, then confirm it with `git diff --cached` in a shell.
+</Callout>
+
+Clean up with `git checkout cart.js && git reset -q`.
+
+### Thursday: test an API from a text file
+
+This is the newest one in my config. [rest.nvim](https://github.com/rest-nvim/rest.nvim) runs the request under the cursor in a `.http` file and shows the response in a split. Requests live in plain text next to the code, so they get reviewed like code.
+
+Make a scratch request file. It only needs internet access:
+
+```bash
+cat > /tmp/nvim-practice/practice.http <<'EOF'
+@base = https://httpbin.org
+
+### Plain GET
+GET {{base}}/get
+
+### Echo a header that comes from .env
+GET {{base}}/headers
+X-Practice: {{PRACTICE_ID}}
+EOF
+printf 'PRACTICE_ID=practice-4821\n' > /tmp/nvim-practice/.env
+```
+
+This writes two requests against httpbin, a public echo service, and an env file. rest.nvim loads the nearest `.env` above the `.http` file on its own.
+
+1. Put the cursor anywhere in the first request and press <Kbd>Space</Kbd> <Kbd>h</Kbd> <Kbd>r</Kbd>. The response opens on the right.
+2. In the result pane, <Kbd>H</Kbd> and <Kbd>L</Kbd> cycle through the Response, Headers, Cookies and Statistics views.
+3. Move to the second request and run it. httpbin echoes back the headers it received, so `"X-Practice": "practice-4821"` in the body proves the value came from `.env`.
+4. Change the value in `.env` and save it. rest.nvim reads the file again on every request.
+5. Press <Kbd>Space</Kbd> <Kbd>h</Kbd> <Kbd>R</Kbd> first. It replays the last request exactly as it was sent, so the echo still shows the old value. Now put the cursor back on the request and press <Kbd>Space</Kbd> <Kbd>h</Kbd> <Kbd>r</Kbd>. That builds it again and picks up the new value.
+
+<Callout type="success" title="Checkpoint">
+  Change a header value without editing the `.http` file, and see the new value echoed back.
+</Callout>
+
+<Callout type="warning" title="The curl export skips .env">
+  `:Rest curl comment` writes the equivalent `curl` command into the file, but in rest.nvim 3.13 it leaves `.env` values blank. The request itself sends them; only the export misses them.
+</Callout>
+
+Once that's comfortable, do the same against something real. In my monorepo, `npm run dev:http` writes an `http/.env` with the local API URL and a short-lived token per product, and `http/forge.http` has a signed-in GraphQL `me` query ready to run. Same keys, real responses.
+
+### Friday: grep, fix, move on
+
+1. <Kbd>Space</Kbd> <Kbd>f</Kbd> <Kbd>w</Kbd>, search `price`, then <Kbd>Ctrl+Q</Kbd> to send every match to the quickfix list.
+2. <Kbd>;</Kbd> <Kbd>n</Kbd> and <Kbd>;</Kbd> <Kbd>p</Kbd> walk the entries.
+3. `:cdo s/price/unitPrice/ | update` renames them all and saves.
+4. <Kbd>Space</Kbd> <Kbd>q</Kbd> <Kbd>l</Kbd> reopens the list in fzf to check every entry changed.
+
+<Callout type="success" title="Checkpoint">
+  The rename touched every match and `node cart.js` still fails the same way. You changed names, not behaviour.
+</Callout>
+
+Reset with `git checkout cart.js`.
+
+## Keeping score
+
+I keep a one-line log per day, in the same file as everything else I practise:
+
+```text
+2026-11-27  warm-up ok · Thu rest.nvim · looked up: result pane H/L
+```
+
+The "looked up" column is the useful part. Anything that shows up there twice goes into the next warm-up until it stops showing up.
+
+## What this doesn't prove
+
+Getting a drill right on a 20-line file doesn't mean I'll reach for it in a 2,000-file monorepo with a failing test and a meeting in ten minutes. The test is to do the drill twice: <mark>once with this page open, once with it closed</mark>. Then use it once on real work that week.
+
+Some of these depend on my setup. The Tuesday drill needs `js-debug-adapter` from Mason, the Thursday drill needs `curl`, internet access and rest.nvim's Lua dependencies, and the keys are mine. Run the `:verbose nmap` checks first and swap in your own.

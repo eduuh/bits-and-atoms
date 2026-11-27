@@ -1,0 +1,65 @@
+---
+title: UX Components Showcase
+published: false
+publishedAt: '2024-04-20'
+summary: A guide to the custom MDX components available in this blog.
+tags:
+  - Engineering
+  - Lifestyle
+status: published
+image: /images/blog-hero.jpg
+series:
+  title: Building a Modern Blog
+  order: 3
+---
+
+We have several components to make your posts more engaging.
+
+## Callouts
+
+Use callouts to highlight important information.
+
+<Callout type="info" title="Information">
+  This is an info callout. Use it for general information.
+</Callout>
+
+<Callout type="warning" title="Warning">
+  This is a warning callout. Be careful!
+</Callout>
+
+<Callout type="danger" title="Danger">
+  This is a danger callout. Something bad might happen.
+</Callout>
+
+<Callout type="success" title="Success">
+  This is a success callout. You did it!
+</Callout>
+
+<Callout type="gotcha" title="Gotcha!">
+  This is a "gotcha" callout. Use it for tips or tricky concepts.
+</Callout>
+
+## Sandpack (Live Code)
+
+You can embed live code editors using Sandpack.
+
+<SandpackDemo 
+  template="vanilla"
+  files={{
+    "index.html": `<!DOCTYPE html>
+<html>
+<body>
+  <h1>Hello World</h1>
+  <p>This is a live demo.</p>
+</body>
+</html>`,
+    "styles.css": `body {
+  font-family: sans-serif;
+  padding: 20px;
+  background: #f0f0f0;
+}
+h1 {
+  color: #333;
+}`
+  }}
+/>

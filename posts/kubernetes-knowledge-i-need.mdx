@@ -1,0 +1,34 @@
+---
+title: The Only Kubernetes Knowledge I Need
+slug: kubernetes-knowledge-i-need
+publishedAt: '2026-03-03'
+summary: >-
+  Kubernetes is huge. For a home lab you only need a small slice of it. This is
+  the slice I actually use.
+tags:
+  - Infrastructure
+published: false
+series:
+  title: Home Lab
+  order: 10
+---
+
+Kubernetes has a reputation for being too much for a home lab. It is. The trick is to ignore the bits you don't need.
+
+## K3s: the lightweight distro
+
+I run [K3s](https://k3s.io/). Single binary, sane defaults, low memory footprint. It was built for edge and IoT, which is more or less what a closet cluster is.
+
+## The core concepts
+
+Four things cover almost everything I do: Deployments keep apps running, Services expose them inside the cluster, Ingress exposes them to the web (via Traefik or nginx), and PVCs hand them persistent storage. I haven't needed Operators or admission controllers yet, and I'm in no rush.
+
+## GitOps with ArgoCD
+
+The real win is GitOps. Manifests live in a git repo. [ArgoCD](https://argo-cd.readthedocs.io/) watches the repo and reconciles the cluster to match. If I break something, I revert the commit and the cluster heals itself.
+
+That sounds annoying until you live with it. Then it's calm. The cluster is whatever's in `main`.
+
+---
+
+*Half the Kubernetes books on the shelf are written for the half I'm not using.*

@@ -1,0 +1,113 @@
+---
+title: "Proxmox First Login: Don't Live as Root"
+slug: proxmox-first-login-admin-user
+publishedAt: '2026-04-18'
+summary: After flashing the install USB and booting the node, the first thing to do is stop logging in as root. Here's the minimum setup.
+tags:
+  - Linux
+  - Self-Hosted
+  - Homelab
+published: false
+series:
+  title: Home Lab
+  order: 4
+---
+
+[Proxmox is installed](/blog/installing-proxmox-ve). The node boots. You're staring at the web UI at `https://<ip>:8006` and the only account that exists is `root@pam`.
+
+Tempting to just log in and start building. Don't.
+
+## Why not root?
+
+Two reasons.
+
+The first is blast radius. Every click in the UI as root is a privileged action. Misclick a checkbox and you've deleted a pool. With a scoped admin user, the worst bad clicks are recoverable.
+
+The second is the audit trail. When something breaks at 11pm, `root` in the logs tells you nothing. `edd@pam` tells you who. Even in a single-admin homelab, that future-you looking at logs will thank present-you.
+
+## Realms: the thing that confused me first
+
+Proxmox separates *where a user lives* from *what a user can do*. The "where" is the realm:
+
+| Realm | Backed by | Shell access | Use for |
+|-------|-----------|--------------|---------|
+| `@pam` | Linux `/etc/passwd` | Yes | You, the admin |
+| `@pve` | Proxmox's own DB | No | API keys, scoped UI-only users |
+
+Your Linux user (`edd`) and your Proxmox user (`edd@pam`) are two sides of the same account. Create the Linux side first, then tell Proxmox about it.
+
+## The three commands
+
+SSH in as root (last time, I promise):
+
+```bash
+ssh root@<node-ip>
+```
+
+First, create the Linux user and give it sudo:
+
+```bash
+adduser edd
+usermod -aG sudo edd
+```
+
+Register the same user in Proxmox and grant Administrator:
+
+```bash
+pveum user add edd@pam
+pveum acl modify / --users edd@pam --roles Administrator
+```
+
+Verify:
+
+```bash
+pveum user list
+pveum acl list
+```
+
+Log out. Log back into the web UI as `edd@pam`. Everything root could do, you can do, with your name attached to it.
+
+## Lock the front door
+
+Now root exists as a backup, not a daily driver. Two quick hardening steps.
+
+Set a strong root password and stash it somewhere you'll actually find in a crisis (password manager, not a sticky note):
+
+```bash
+passwd root
+```
+
+Once your admin user's key works, disable root SSH login:
+
+```bash
+# /etc/ssh/sshd_config
+PermitRootLogin no
+```
+
+Reload SSH:
+
+```bash
+systemctl reload ssh
+```
+
+## The API token trick
+
+While you're here, create an API token for any automation you're planning (Terraform, Ansible, backup scripts):
+
+```bash
+pveum user add automation@pve
+pveum acl modify / --users automation@pve --roles PVEVMAdmin
+pveum user token add automation@pve main --privsep 0
+```
+
+That last command prints a token once. Copy it immediately. It's not shown again. Use it in scripts instead of hardcoding your own password anywhere.
+
+## What I used to do wrong
+
+For my first few Proxmox installs I lived as root "just until I had things working." *Things working* never happened. Every new VM introduced one more reason to stay root. A fresh install is the cheapest moment to do this right.
+
+Ten minutes of setup now. Zero anxiety later about what's in the audit logs.
+
+---
+
+*Living as root is the homelab equivalent of leaving your front door open because you're "just popping out".*

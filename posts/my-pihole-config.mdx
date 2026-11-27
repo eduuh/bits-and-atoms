@@ -1,0 +1,36 @@
+---
+title: My Pihole Config - DNS Version
+slug: my-pihole-config
+publishedAt: '2026-03-05'
+summary: Blocking ads and trackers network-wide with Pi-hole and Unbound.
+tags:
+  - Infrastructure
+published: false
+series:
+  title: Home Lab
+  order: 8
+---
+
+Every device on my network routes DNS through [Pi-hole](https://pi-hole.net/). No browser extensions, no per-device tweaks. Block once, block everywhere.
+
+## The setup
+
+Pi-hole runs as a container in my home lab. A Raspberry Pi works just as well. The workload is tiny and the memory footprint barely registers.
+
+## Recursive DNS with Unbound
+
+I don't forward queries to Google (8.8.8.8) or Cloudflare (1.1.1.1). Pi-hole hands them to [Unbound](https://nlnetlabs.nl/projects/unbound/about/), which walks the DNS tree itself: ask the root, then the TLD, then the authoritative server.
+
+Two things fall out of that. No single company sees my DNS history. And DNSSEC validation happens locally rather than on someone else's resolver.
+
+## Regex blocking
+
+Blocklists cover the easy stuff. Regex covers the rest. One pattern catches a whole subdomain of mobile-ad telemetry that would otherwise need fifty individual entries.
+
+## Local DNS
+
+Pi-hole is also my local DNS server. I type `plex.home.arpa` instead of remembering `192.168.30.42`. The home network gets the convenience of a real domain without anything leaving the LAN.
+
+---
+
+*The day I cut the ads at the DNS layer was the day my phone's battery improved by an hour.*
